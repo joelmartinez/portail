@@ -147,9 +147,11 @@ class OpenAIProvider extends AIProvider {
         content = content.trim();
         
         // If content starts with a div, extract the first complete div element
-        // Use depth-counting to properly handle nested divs
-        // Note: This is a simple parser for AI-generated HTML that follows our prompt guidelines
-        // It assumes: no self-closing divs, no '<div' in attributes, tags follow standard format
+        // This is a simple depth-counter parser optimized for AI-generated HTML
+        // that follows our prompt guidelines (clean HTML, no explanatory text)
+        // Limitations: Assumes standard HTML format, may not handle edge cases like
+        // '<div' appearing in attribute values or self-closing divs
+        // However, these cases are unlikely given our specific AI prompt instructions
         if (content.toLowerCase().startsWith('<div')) {
             let depth = 0;
             let endPos = -1;
@@ -160,7 +162,7 @@ class OpenAIProvider extends AIProvider {
                 
                 if (remaining.startsWith('<div')) {
                     depth++;
-                    i += 4; // skip '<div'
+                    i += 4; // skip '<div' - attributes don't affect tag detection
                 } else if (remaining.startsWith('</div>')) {
                     depth--;
                     if (depth === 0) {
