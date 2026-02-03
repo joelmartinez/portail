@@ -88,7 +88,7 @@ const state = {
     currentScreen: 'warning',
     generatedContent: null,
     aiProvider: null,
-    selectedModel: 'gpt-3.5-turbo'
+    selectedModel: 'gpt-4o-mini'
 };
 
 // DOM Elements

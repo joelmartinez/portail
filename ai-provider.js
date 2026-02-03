@@ -26,7 +26,7 @@ class OpenAIProvider extends AIProvider {
     constructor(apiKey, config = {}) {
         super(apiKey, config);
         this.baseURL = 'https://api.openai.com/v1';
-        this.defaultModel = config.model || 'gpt-3.5-turbo';
+        this.defaultModel = config.model || 'gpt-4o-mini';
         this.temperature = config.temperature || 0.8;
         this.maxTokens = config.maxTokens || 1000;
     }
@@ -75,7 +75,30 @@ class OpenAIProvider extends AIProvider {
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are a creative HTML content generator. Generate engaging, unique HTML content for an experimental web experience. Always create something completely different and unexpected. IMPORTANT: Return ONLY valid HTML content that can be inserted into a <div> element. Do NOT include <html>, <head>, or <body> tags. The HTML should be complete and ready to render within a container div.'
+                        content: `You are a creative HTML content generator for an experimental, AI-driven web experience. You have complete creative control over how to present each page based on the context.
+
+CRITICAL GUIDELINES:
+1. Return ONLY valid HTML content - no explanatory text, no markdown formatting, no code blocks
+2. Start your response immediately with an HTML tag (like <div>, <h1>, etc.)
+3. Do NOT include <html>, <head>, or <body> tags
+4. The HTML will be inserted directly into a <div> container
+
+CREATIVE FREEDOM:
+- You control the structure, layout, and presentation of each page
+- Generate diverse, engaging links that take users in different/unexpected directions
+- Create immersive experiences with varied content types (stories, guides, games, mysteries, etc.)
+- Use semantic HTML5 tags appropriately
+
+VISUAL ELEMENTS:
+- Generate inline SVG images for visual elements whenever appropriate
+- SVGs should be simple, creative, and enhance the narrative
+- Use SVG for icons, illustrations, diagrams, decorative elements, etc.
+- Example: <svg width="100" height="100"><circle cx="50" cy="50" r="40" fill="#6366f1"/></svg>
+
+STRUCTURE:
+- Include 3-5 clickable links (href="#") that represent different paths/choices
+- Each link should lead somewhere interesting and contextually relevant
+- Make every generation unique and unexpected`
                     },
                     {
                         role: 'user',
@@ -98,15 +121,43 @@ class OpenAIProvider extends AIProvider {
             throw new Error('Invalid response structure from OpenAI API');
         }
 
-        return data.choices[0].message.content;
+        let content = data.choices[0].message.content;
+
+        // Parse and clean the response to extract only HTML content
+        // Remove markdown code blocks if present
+        content = content.replace(/```html\n?/gi, '').replace(/```\n?/g, '');
+        
+        // Remove common explanatory prefixes
+        const explanatoryPrefixes = [
+            /^here'?s?\s+(the\s+)?html(\s+content)?[:\s]*/i,
+            /^here'?s?\s+what\s+i\s+created[:\s]*/i,
+            /^i'?ve\s+created[:\s]*/i,
+            /^below\s+is[:\s]*/i,
+            /^this\s+is[:\s]*/i
+        ];
+        
+        for (const prefix of explanatoryPrefixes) {
+            content = content.replace(prefix, '');
+        }
+        
+        // Trim whitespace
+        content = content.trim();
+        
+        // If content starts with a div, extract only the div and its contents
+        const divMatch = content.match(/^<div[\s\S]*<\/div>/i);
+        if (divMatch) {
+            content = divMatch[0];
+        }
+
+        return content;
     }
 
     static getAvailableModels() {
         return [
-            { id: 'gpt-4', name: 'GPT-4', description: 'Most capable model, best quality' },
-            { id: 'gpt-4-turbo-preview', name: 'GPT-4 Turbo', description: 'Faster GPT-4 with larger context' },
-            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast and efficient (recommended)' },
-            { id: 'gpt-3.5-turbo-16k', name: 'GPT-3.5 Turbo 16K', description: 'Extended context length' }
+            { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable model - multimodal, fast (recommended)' },
+            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Affordable, fast, and capable' },
+            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'High capability with large context' },
+            { id: 'gpt-4', name: 'GPT-4', description: 'Previous flagship model' }
         ];
     }
 }
