@@ -143,10 +143,34 @@ STRUCTURE:
         // Trim whitespace
         content = content.trim();
         
-        // If content starts with a div, extract only the div and its contents
-        const divMatch = content.match(/^<div[\s\S]*<\/div>/i);
-        if (divMatch) {
-            content = divMatch[0];
+        // If content starts with a div, extract the first complete div element
+        // Use a simple approach: find the first <div> and count opening/closing tags
+        if (content.toLowerCase().startsWith('<div')) {
+            let depth = 0;
+            let inTag = false;
+            let tagName = '';
+            let endPos = -1;
+            
+            for (let i = 0; i < content.length; i++) {
+                const char = content[i];
+                const remaining = content.substring(i).toLowerCase();
+                
+                if (remaining.startsWith('<div')) {
+                    depth++;
+                    i += 3; // skip 'div'
+                } else if (remaining.startsWith('</div>')) {
+                    depth--;
+                    if (depth === 0) {
+                        endPos = i + 6; // include '</div>'
+                        break;
+                    }
+                    i += 5; // skip '/div>'
+                }
+            }
+            
+            if (endPos > 0) {
+                content = content.substring(0, endPos);
+            }
         }
 
         return content;
@@ -154,8 +178,8 @@ STRUCTURE:
 
     static getAvailableModels() {
         return [
-            { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable model - multimodal, fast (recommended)' },
-            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Affordable, fast, and capable' },
+            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Affordable, fast, and capable (recommended)' },
+            { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable model - multimodal and fast' },
             { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'High capability with large context' },
             { id: 'gpt-4', name: 'GPT-4', description: 'Previous flagship model' }
         ];
