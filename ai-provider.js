@@ -144,27 +144,27 @@ STRUCTURE:
         content = content.trim();
         
         // If content starts with a div, extract the first complete div element
-        // Use a simple approach: find the first <div> and count opening/closing tags
+        // Use depth-counting to properly handle nested divs
         if (content.toLowerCase().startsWith('<div')) {
             let depth = 0;
-            let inTag = false;
-            let tagName = '';
             let endPos = -1;
+            let i = 0;
             
-            for (let i = 0; i < content.length; i++) {
-                const char = content[i];
+            while (i < content.length) {
                 const remaining = content.substring(i).toLowerCase();
                 
                 if (remaining.startsWith('<div')) {
                     depth++;
-                    i += 3; // skip 'div'
+                    i += 4; // skip '<div'
                 } else if (remaining.startsWith('</div>')) {
                     depth--;
                     if (depth === 0) {
                         endPos = i + 6; // include '</div>'
                         break;
                     }
-                    i += 5; // skip '/div>'
+                    i += 6; // skip '</div>'
+                } else {
+                    i++;
                 }
             }
             
