@@ -3,6 +3,32 @@
  * Abstracts AI service interactions to support multiple providers
  */
 
+// System prompt for OpenAI content generation
+const OPENAI_SYSTEM_PROMPT = `You are a creative HTML content generator for an experimental, AI-driven web experience. You have complete creative control over how to present each page based on the context.
+
+CRITICAL GUIDELINES:
+1. Return ONLY valid HTML content - no explanatory text, no markdown formatting, no code blocks
+2. Start your response immediately with an HTML tag (like <div>, <h1>, etc.)
+3. Do NOT include <html>, <head>, or <body> tags
+4. The HTML will be inserted directly into a <div> container
+
+CREATIVE FREEDOM:
+- You control the structure, layout, and presentation of each page
+- Generate diverse, engaging links that take users in different/unexpected directions
+- Create immersive experiences with varied content types (stories, guides, games, mysteries, etc.)
+- Use semantic HTML5 tags appropriately
+
+VISUAL ELEMENTS:
+- Generate inline SVG images for visual elements whenever appropriate
+- SVGs should be simple, creative, and enhance the narrative
+- Use SVG for icons, illustrations, diagrams, decorative elements, etc.
+- Example: <svg width="100" height="100"><circle cx="50" cy="50" r="40" fill="#6366f1"/></svg>
+
+STRUCTURE:
+- Include 3-5 clickable links (href="#") that represent different paths/choices
+- Each link should lead somewhere interesting and contextually relevant
+- Make every generation unique and unexpected`;
+
 class AIProvider {
     constructor(apiKey, config = {}) {
         this.apiKey = apiKey;
@@ -75,30 +101,7 @@ class OpenAIProvider extends AIProvider {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a creative HTML content generator for an experimental, AI-driven web experience. You have complete creative control over how to present each page based on the context.
-
-CRITICAL GUIDELINES:
-1. Return ONLY valid HTML content - no explanatory text, no markdown formatting, no code blocks
-2. Start your response immediately with an HTML tag (like <div>, <h1>, etc.)
-3. Do NOT include <html>, <head>, or <body> tags
-4. The HTML will be inserted directly into a <div> container
-
-CREATIVE FREEDOM:
-- You control the structure, layout, and presentation of each page
-- Generate diverse, engaging links that take users in different/unexpected directions
-- Create immersive experiences with varied content types (stories, guides, games, mysteries, etc.)
-- Use semantic HTML5 tags appropriately
-
-VISUAL ELEMENTS:
-- Generate inline SVG images for visual elements whenever appropriate
-- SVGs should be simple, creative, and enhance the narrative
-- Use SVG for icons, illustrations, diagrams, decorative elements, etc.
-- Example: <svg width="100" height="100"><circle cx="50" cy="50" r="40" fill="#6366f1"/></svg>
-
-STRUCTURE:
-- Include 3-5 clickable links (href="#") that represent different paths/choices
-- Each link should lead somewhere interesting and contextually relevant
-- Make every generation unique and unexpected`
+                        content: OPENAI_SYSTEM_PROMPT
                     },
                     {
                         role: 'user',
@@ -145,6 +148,8 @@ STRUCTURE:
         
         // If content starts with a div, extract the first complete div element
         // Use depth-counting to properly handle nested divs
+        // Note: This is a simple parser for AI-generated HTML that follows our prompt guidelines
+        // It assumes: no self-closing divs, no '<div' in attributes, tags follow standard format
         if (content.toLowerCase().startsWith('<div')) {
             let depth = 0;
             let endPos = -1;
