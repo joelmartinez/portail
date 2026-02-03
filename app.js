@@ -26,11 +26,13 @@ function sanitizeHTML(html) {
             }
         });
         
-        // Sanitize href attributes to prevent javascript: URLs
+        // Sanitize href attributes to prevent javascript:, data:, and vbscript: URLs
         if (el.hasAttribute('href')) {
             const href = el.getAttribute('href');
-            if (href && (href.trim().toLowerCase().startsWith('javascript:') || 
-                        href.trim().toLowerCase().startsWith('data:'))) {
+            const lowerHref = href ? href.trim().toLowerCase() : '';
+            if (lowerHref.startsWith('javascript:') || 
+                lowerHref.startsWith('data:') ||
+                lowerHref.startsWith('vbscript:')) {
                 el.setAttribute('href', '#');
             }
         }
@@ -38,8 +40,10 @@ function sanitizeHTML(html) {
         // Sanitize src attributes
         if (el.hasAttribute('src')) {
             const src = el.getAttribute('src');
-            if (src && (src.trim().toLowerCase().startsWith('javascript:') || 
-                       src.trim().toLowerCase().startsWith('data:'))) {
+            const lowerSrc = src ? src.trim().toLowerCase() : '';
+            if (lowerSrc.startsWith('javascript:') || 
+                lowerSrc.startsWith('data:') ||
+                lowerSrc.startsWith('vbscript:')) {
                 el.removeAttribute('src');
             }
         }
@@ -53,7 +57,7 @@ const CONFIG = {
     OPENAI_MODEL: 'gpt-3.5-turbo',
     TEMPERATURE: 0.8,
     MAX_TOKENS: 1000,
-    MAX_PROMPT_LENGTH: 500
+    MAX_PROMPT_LENGTH: 500  // Limit for prompt injection protection and API efficiency
 };
 
 // Sanitize text for use in prompts to prevent injection
@@ -66,6 +70,16 @@ function sanitizePromptText(text) {
         .slice(0, CONFIG.MAX_PROMPT_LENGTH)
         .replace(/[<>{}]/g, '')
         .trim() || 'unknown';
+}
+
+// Escape HTML entities for safe display in HTML
+function escapeHTML(text) {
+    if (!text || typeof text !== 'string') {
+        return '';
+    }
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // App State
@@ -297,6 +311,12 @@ async function generateExperience() {
         }
 
         const data = await response.json();
+        
+        // Validate response structure
+        if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+            throw new Error('Invalid response structure from OpenAI API');
+        }
+        
         const generatedHTML = data.choices[0].message.content;
 
         // Sanitize the AI-generated HTML to prevent XSS attacks
@@ -317,10 +337,11 @@ async function generateExperience() {
         state.generatedContent = generatedHTML;
 
     } catch (error) {
+        const escapedMessage = escapeHTML(error.message || 'Unknown error');
         elements.generatedContent.innerHTML = `
             <div style="text-align: center; padding: 2rem;">
                 <h2 style="color: var(--danger-color);">⚠️ Generation Failed</h2>
-                <p>There was an error generating content: ${error.message}</p>
+                <p>There was an error generating content: ${escapedMessage}</p>
                 <p style="color: var(--text-muted); margin-top: 1rem;">
                     This could be due to API limits, network issues, or an invalid API key.
                     Please try again.
@@ -338,11 +359,12 @@ async function handleLinkClick(link) {
     const linkText = sanitizePromptText(link.textContent);
     const linkContext = sanitizePromptText(link.getAttribute('href') || link.getAttribute('data-context') || '');
 
-    // Show loading state (using sanitized linkText for display)
+    // Show loading state (escape HTML for safe display)
+    const escapedLinkText = escapeHTML(linkText);
     elements.generatedContent.innerHTML = `
         <div class="loading">
             <div class="spinner"></div>
-            <p>Loading: ${linkText}...</p>
+            <p>Loading: ${escapedLinkText}...</p>
         </div>
     `;
 
@@ -390,6 +412,12 @@ async function handleLinkClick(link) {
         }
 
         const data = await response.json();
+        
+        // Validate response structure
+        if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+            throw new Error('Invalid response structure from OpenAI API');
+        }
+        
         const generatedHTML = data.choices[0].message.content;
 
         // Sanitize the AI-generated HTML to prevent XSS attacks
@@ -407,10 +435,11 @@ async function handleLinkClick(link) {
         });
 
     } catch (error) {
+        const escapedMessage = escapeHTML(error.message || 'Unknown error');
         elements.generatedContent.innerHTML = `
             <div style="text-align: center; padding: 2rem;">
                 <h2 style="color: var(--danger-color);">⚠️ Navigation Failed</h2>
-                <p>There was an error loading this content: ${error.message}</p>
+                <p>There was an error loading this content: ${escapedMessage}</p>
                 <button id="reload-page-btn" class="btn btn-primary" style="margin-top: 1rem;">
                     Reload Page
                 </button>
