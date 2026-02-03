@@ -86,7 +86,9 @@ function escapeHTML(text) {
 const state = {
     apiKey: null,
     currentScreen: 'warning',
-    generatedContent: null
+    generatedContent: null,
+    aiProvider: null,
+    selectedModel: 'gpt-3.5-turbo'
 };
 
 // DOM Elements
@@ -101,6 +103,9 @@ const elements = {
     proceedBtn: document.getElementById('proceed-btn'),
     apiKeyInput: document.getElementById('api-key-input'),
     toggleVisibilityBtn: document.getElementById('toggle-visibility'),
+    modelSelect: document.getElementById('model-select'),
+    customModelGroup: document.getElementById('custom-model-group'),
+    customModelInput: document.getElementById('custom-model-input'),
     backBtn: document.getElementById('back-btn'),
     startBtn: document.getElementById('start-btn'),
     apiError: document.getElementById('api-error'),
@@ -139,6 +144,15 @@ function initializeEventListeners() {
         }
     });
 
+    // Model selection
+    elements.modelSelect.addEventListener('change', (e) => {
+        if (e.target.value === 'custom') {
+            elements.customModelGroup.style.display = 'block';
+        } else {
+            elements.customModelGroup.style.display = 'none';
+        }
+    });
+
     elements.backBtn.addEventListener('click', () => {
         showScreen('warning');
     });
@@ -156,8 +170,27 @@ function initializeEventListeners() {
             return;
         }
 
+        // Get selected model
+        let selectedModel = elements.modelSelect.value;
+        if (selectedModel === 'custom') {
+            selectedModel = elements.customModelInput.value.trim();
+            if (!selectedModel) {
+                showError('Please enter a custom model name');
+                return;
+            }
+        }
+
+        state.selectedModel = selectedModel;
+
+        // Create AI provider instance
+        state.aiProvider = createAIProvider('openai', apiKey, {
+            model: selectedModel,
+            temperature: CONFIG.TEMPERATURE,
+            maxTokens: CONFIG.MAX_TOKENS
+        });
+
         // Test the API key
-        const isValid = await testApiKey(apiKey);
+        const isValid = await testApiKey();
         if (!isValid) {
             return; // Error already shown in testApiKey
         }
@@ -194,32 +227,15 @@ function showError(message) {
 }
 
 // Test API Key
-async function testApiKey(apiKey) {
+async function testApiKey() {
     elements.startBtn.disabled = true;
     elements.startBtn.textContent = 'Validating...';
 
     try {
-        const response = await fetch('https://api.openai.com/v1/models', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`
-            }
-        });
-
-        if (!response.ok) {
-            if (response.status === 401) {
-                showError('Invalid API key. Please check your key and try again.');
-            } else if (response.status === 429) {
-                showError('Rate limit exceeded. Please try again in a moment.');
-            } else {
-                showError(`API error: ${response.status}. Please try again.`);
-            }
-            return false;
-        }
-
+        await state.aiProvider.validate();
         return true;
     } catch (error) {
-        showError('Network error. Please check your connection and try again.');
+        showError(error.message);
         return false;
     } finally {
         elements.startBtn.disabled = false;
@@ -270,54 +286,32 @@ async function generateExperience() {
 
         const prompt = `Create a unique, engaging, and creative ${randomType} set in ${randomTheme}. 
         
-        Requirements:
-        - Generate complete HTML content with headings, paragraphs, and interactive elements
-        - Include 3-5 clickable links that would lead to different parts of this experience (use # as href)
-        - Add some styled elements like quotes or lists
-        - Make it visually interesting and immersive
-        - Include a title, description, and interactive elements
-        - Keep it under 500 words
-        - Use modern, engaging language
-        - Make every generation completely unique and different
+        CRITICAL REQUIREMENTS:
+        - Your response MUST be ONLY valid HTML content
+        - The HTML will be inserted directly into a <div> element in a web page
+        - Do NOT include <html>, <head>, or <body> tags
+        - Do NOT include any explanatory text before or after the HTML
+        - Start immediately with HTML tags (e.g., <h1>, <div>, <p>, etc.)
         
-        Format the response as clean HTML that can be directly inserted into a div. Use semantic HTML tags.
-        Do NOT include <html>, <head>, or <body> tags - only the content that goes inside a div.`;
-
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.apiKey}`
-            },
-            body: JSON.stringify({
-                model: CONFIG.OPENAI_MODEL,
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a creative HTML content generator. Generate engaging, unique HTML content for an experimental web experience. Always create something completely different and unexpected.'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                temperature: CONFIG.TEMPERATURE,
-                max_tokens: CONFIG.MAX_TOKENS
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
+        Content Requirements:
+        - Include a clear title using <h1> or <h2>
+        - Add 3-5 paragraphs of engaging content
+        - Include 3-5 clickable links (use href="#") that represent different sections or choices
+        - Use semantic HTML tags: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <blockquote>, etc.
+        - Add visual variety with lists, quotes, or emphasized text
+        - Keep total content under 500 words
+        - Make it immersive and unique
         
-        // Validate response structure
-        if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-            throw new Error('Invalid response structure from OpenAI API');
-        }
-        
-        const generatedHTML = data.choices[0].message.content;
+        Example format (DO NOT copy this, create something completely different):
+        <h1>Your Title Here</h1>
+        <p>Opening paragraph...</p>
+        <ul>
+          <li><a href="#">Link 1</a></li>
+          <li><a href="#">Link 2</a></li>
+        </ul>
+        <p>More content...</p>`;
+
+        const generatedHTML = await state.aiProvider.generateContent(prompt);
 
         // Sanitize the AI-generated HTML to prevent XSS attacks
         const sanitizedHTML = sanitizeHTML(generatedHTML);
@@ -375,50 +369,22 @@ async function handleLinkClick(link) {
         Generate new HTML content that represents what this link would lead to. 
         Make it feel like a natural continuation or new section of an interactive experience.
         
-        Requirements:
-        - Generate complete HTML content
-        - Include 3-5 new clickable links (use # as href)
-        - Make it engaging and relevant to the link they clicked
+        CRITICAL REQUIREMENTS:
+        - Your response MUST be ONLY valid HTML content
+        - The HTML will be inserted directly into a <div> element in a web page
+        - Do NOT include <html>, <head>, or <body> tags
+        - Do NOT include any explanatory text before or after the HTML
+        - Start immediately with HTML tags
+        
+        Content Requirements:
+        - Include a clear title related to "${linkText}"
+        - Add 3-5 paragraphs of engaging content
+        - Include 3-5 new clickable links (use href="#") for further navigation
+        - Use semantic HTML tags
         - Keep it under 500 words
-        - Include a way to "go back" or explore other areas
-        
-        Format as clean HTML for insertion into a div. Do NOT include <html>, <head>, or <body> tags.`;
+        - Make it relevant to the clicked link`;
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.apiKey}`
-            },
-            body: JSON.stringify({
-                model: CONFIG.OPENAI_MODEL,
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a creative HTML content generator for an interactive web experience.'
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                temperature: CONFIG.TEMPERATURE,
-                max_tokens: CONFIG.MAX_TOKENS
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        // Validate response structure
-        if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-            throw new Error('Invalid response structure from OpenAI API');
-        }
-        
-        const generatedHTML = data.choices[0].message.content;
+        const generatedHTML = await state.aiProvider.generateContent(prompt);
 
         // Sanitize the AI-generated HTML to prevent XSS attacks
         const sanitizedHTML = sanitizeHTML(generatedHTML);

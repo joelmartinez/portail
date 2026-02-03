@@ -93,6 +93,27 @@
                     <button type="button" id="toggle-visibility" class="btn-small">Show</button>
                 </div>
 
+                <div class="form-group">
+                    <label for="model-select">AI Model:</label>
+                    <select id="model-select" class="model-select">
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast & Efficient - Recommended)</option>
+                        <option value="gpt-3.5-turbo-16k">GPT-3.5 Turbo 16K (Extended Context)</option>
+                        <option value="gpt-4">GPT-4 (Most Capable)</option>
+                        <option value="gpt-4-turbo-preview">GPT-4 Turbo (Faster GPT-4)</option>
+                        <option value="custom">Custom Model...</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="custom-model-group" style="display: none;">
+                    <label for="custom-model-input">Custom Model Name:</label>
+                    <input 
+                        type="text" 
+                        id="custom-model-input"
+                        class="api-key-input"
+                        placeholder="e.g., gpt-4-0125-preview">
+                    <p class="helper-text">Enter the exact model name from OpenAI's documentation</p>
+                </div>
+
                 <div id="api-error" class="error-message" style="display: none;"></div>
 
                 <div class="button-group">
@@ -124,6 +145,7 @@
         </div>
     </div>
 
+    <script src="ai-provider.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
