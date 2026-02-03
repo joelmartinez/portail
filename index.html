@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portail - AI-Driven UX Experiment</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Warning Screen -->
+        <div id="warning-screen" class="screen active">
+            <div class="container">
+                <h1>⚠️ WARNING ⚠️</h1>
+                <div class="warning-box">
+                    <h2>Important Legal Notice</h2>
+                    <p>Before proceeding, please read and understand the following:</p>
+                    <ul>
+                        <li>This is an experimental AI-driven user experience</li>
+                        <li>You will be asked to provide your own OpenAI API key</li>
+                        <li>Your API key will be used to make requests to OpenAI's services</li>
+                        <li>API usage will incur charges on your OpenAI account</li>
+                        <li>Your API key is stored only in your browser's memory during this session</li>
+                        <li>The generated content is AI-created and may be unpredictable</li>
+                        <li>This application runs entirely in your browser (client-side)</li>
+                        <li>We do not store, transmit, or have access to your API key</li>
+                    </ul>
+                    
+                    <h3>Liability Waiver</h3>
+                    <p class="disclaimer">
+                        By using this application, you acknowledge that:
+                    </p>
+                    <ul>
+                        <li>You are solely responsible for any costs incurred through API usage</li>
+                        <li>The developers are not liable for any damages or costs</li>
+                        <li>Content generated is AI-created and not reviewed or endorsed</li>
+                        <li>You use this service at your own risk</li>
+                        <li>You have reviewed and understand the source code of this application</li>
+                    </ul>
+                    
+                    <div class="code-review-notice">
+                        <p><strong>🔍 Code Review Required</strong></p>
+                        <p>Before proceeding, we strongly recommend reviewing the source code:</p>
+                        <a href="https://github.com/joelmartinez/portail" target="_blank" class="code-link">
+                            View Source Code on GitHub
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="acknowledgment">
+                    <label>
+                        <input type="checkbox" id="acknowledge-checkbox">
+                        I have read, understood, and agree to the above terms and warnings
+                    </label>
+                </div>
+                
+                <button id="proceed-btn" class="btn btn-primary" disabled>
+                    Proceed to API Key Setup
+                </button>
+            </div>
+        </div>
+
+        <!-- API Key Setup Screen -->
+        <div id="apikey-screen" class="screen">
+            <div class="container">
+                <h1>🔑 API Key Setup</h1>
+                <div class="info-box">
+                    <h2>OpenAI API Key Required</h2>
+                    <p>To generate dynamic content, you'll need an OpenAI API key.</p>
+                    
+                    <h3>How to get your API key:</h3>
+                    <ol>
+                        <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></li>
+                        <li>Sign in or create an account</li>
+                        <li>Navigate to API Keys section</li>
+                        <li>Create a new secret key</li>
+                        <li>Copy and paste it below</li>
+                    </ol>
+                    
+                    <p class="security-note">
+                        🔒 Your API key is never sent to our servers. It's stored only in your browser's memory
+                        and used directly to communicate with OpenAI's API.
+                    </p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="api-key-input">OpenAI API Key:</label>
+                    <input 
+                        type="password" 
+                        id="api-key-input" 
+                        class="api-key-input"
+                        placeholder="sk-...">
+                    <button id="toggle-visibility" class="btn-small">Show</button>
+                </div>
+                
+                <div id="api-error" class="error-message" style="display: none;"></div>
+                
+                <div class="button-group">
+                    <button id="back-btn" class="btn btn-secondary">Back</button>
+                    <button id="start-btn" class="btn btn-primary">Start Experience</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Experience Screen -->
+        <div id="experience-screen" class="screen">
+            <div class="container">
+                <div id="generated-content" class="generated-content">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Generating your unique experience...</p>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="regenerate-btn" class="btn btn-primary">
+                        🔄 Generate New Experience
+                    </button>
+                    <button id="reset-btn" class="btn btn-secondary">
+                        Reset Application
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
