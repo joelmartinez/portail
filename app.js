@@ -1,3 +1,73 @@
+// HTML Sanitization Function
+function sanitizeHTML(html) {
+    // Create a temporary div to parse HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    // Remove all script tags
+    const scripts = temp.querySelectorAll('script');
+    scripts.forEach(script => script.remove());
+    
+    // Remove all event handlers and dangerous attributes
+    const allElements = temp.querySelectorAll('*');
+    allElements.forEach(el => {
+        // Remove event handler attributes
+        Array.from(el.attributes).forEach(attr => {
+            if (attr.name.startsWith('on')) {
+                el.removeAttribute(attr.name);
+            }
+        });
+        
+        // Remove dangerous attributes
+        const dangerousAttrs = ['formaction', 'form', 'formmethod', 'formtarget'];
+        dangerousAttrs.forEach(attr => {
+            if (el.hasAttribute(attr)) {
+                el.removeAttribute(attr);
+            }
+        });
+        
+        // Sanitize href attributes to prevent javascript: URLs
+        if (el.hasAttribute('href')) {
+            const href = el.getAttribute('href');
+            if (href && (href.trim().toLowerCase().startsWith('javascript:') || 
+                        href.trim().toLowerCase().startsWith('data:'))) {
+                el.setAttribute('href', '#');
+            }
+        }
+        
+        // Sanitize src attributes
+        if (el.hasAttribute('src')) {
+            const src = el.getAttribute('src');
+            if (src && (src.trim().toLowerCase().startsWith('javascript:') || 
+                       src.trim().toLowerCase().startsWith('data:'))) {
+                el.removeAttribute('src');
+            }
+        }
+    });
+    
+    return temp.innerHTML;
+}
+
+// Configuration
+const CONFIG = {
+    OPENAI_MODEL: 'gpt-3.5-turbo',
+    TEMPERATURE: 0.8,
+    MAX_TOKENS: 1000,
+    MAX_PROMPT_LENGTH: 500
+};
+
+// Sanitize text for use in prompts to prevent injection
+function sanitizePromptText(text) {
+    if (!text || typeof text !== 'string') {
+        return 'unknown';
+    }
+    // Limit length and remove potentially harmful characters
+    return text
+        .slice(0, CONFIG.MAX_PROMPT_LENGTH)
+        .replace(/[<>{}]/g, '')
+        .trim() || 'unknown';
+}
+
 // App State
 const state = {
     apiKey: null,
@@ -206,7 +276,7 @@ async function generateExperience() {
                 'Authorization': `Bearer ${state.apiKey}`
             },
             body: JSON.stringify({
-                model: 'gpt-3.5-turbo',
+                model: CONFIG.OPENAI_MODEL,
                 messages: [
                     {
                         role: 'system',
@@ -217,8 +287,8 @@ async function generateExperience() {
                         content: prompt
                     }
                 ],
-                temperature: 1.0,
-                max_tokens: 1000
+                temperature: CONFIG.TEMPERATURE,
+                max_tokens: CONFIG.MAX_TOKENS
             })
         });
 
@@ -229,8 +299,11 @@ async function generateExperience() {
         const data = await response.json();
         const generatedHTML = data.choices[0].message.content;
 
-        // Display the generated content
-        elements.generatedContent.innerHTML = generatedHTML;
+        // Sanitize the AI-generated HTML to prevent XSS attacks
+        const sanitizedHTML = sanitizeHTML(generatedHTML);
+
+        // Display the sanitized generated content
+        elements.generatedContent.innerHTML = sanitizedHTML;
 
         // Add click handlers to generated links for SPA behavior
         const links = elements.generatedContent.querySelectorAll('a');
@@ -261,10 +334,11 @@ async function generateExperience() {
 
 // Handle link clicks in generated content
 async function handleLinkClick(link) {
-    const linkText = link.textContent;
-    const linkContext = link.getAttribute('href') || link.getAttribute('data-context') || 'unknown';
+    // Sanitize inputs to prevent prompt injection
+    const linkText = sanitizePromptText(link.textContent);
+    const linkContext = sanitizePromptText(link.getAttribute('href') || link.getAttribute('data-context') || '');
 
-    // Show loading state
+    // Show loading state (using sanitized linkText for display)
     elements.generatedContent.innerHTML = `
         <div class="loading">
             <div class="spinner"></div>
@@ -295,7 +369,7 @@ async function handleLinkClick(link) {
                 'Authorization': `Bearer ${state.apiKey}`
             },
             body: JSON.stringify({
-                model: 'gpt-3.5-turbo',
+                model: CONFIG.OPENAI_MODEL,
                 messages: [
                     {
                         role: 'system',
@@ -306,8 +380,8 @@ async function handleLinkClick(link) {
                         content: prompt
                     }
                 ],
-                temperature: 1.0,
-                max_tokens: 1000
+                temperature: CONFIG.TEMPERATURE,
+                max_tokens: CONFIG.MAX_TOKENS
             })
         });
 
@@ -318,7 +392,10 @@ async function handleLinkClick(link) {
         const data = await response.json();
         const generatedHTML = data.choices[0].message.content;
 
-        elements.generatedContent.innerHTML = generatedHTML;
+        // Sanitize the AI-generated HTML to prevent XSS attacks
+        const sanitizedHTML = sanitizeHTML(generatedHTML);
+
+        elements.generatedContent.innerHTML = sanitizedHTML;
 
         // Add click handlers to new links
         const links = elements.generatedContent.querySelectorAll('a');
@@ -334,11 +411,16 @@ async function handleLinkClick(link) {
             <div style="text-align: center; padding: 2rem;">
                 <h2 style="color: var(--danger-color);">⚠️ Navigation Failed</h2>
                 <p>There was an error loading this content: ${error.message}</p>
-                <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 1rem;">
+                <button id="reload-page-btn" class="btn btn-primary" style="margin-top: 1rem;">
                     Reload Page
                 </button>
             </div>
         `;
+        // Add event listener for the reload button
+        const reloadBtn = document.getElementById('reload-page-btn');
+        if (reloadBtn) {
+            reloadBtn.addEventListener('click', () => location.reload());
+        }
     } finally {
         elements.regenerateBtn.disabled = false;
     }
