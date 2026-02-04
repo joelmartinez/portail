@@ -11,10 +11,21 @@ function sanitizeHTML(html) {
     // Remove all event handlers and dangerous attributes
     const allElements = temp.querySelectorAll('*');
     allElements.forEach(el => {
-        // Remove event handler attributes
+        // Remove event handler attributes except onclick on buttons (allow for simple interactions)
         Array.from(el.attributes).forEach(attr => {
             if (attr.name.startsWith('on')) {
-                el.removeAttribute(attr.name);
+                // Allow onclick on buttons if it's a simple safe interaction (alert, Math.random, etc.)
+                if (attr.name === 'onclick' && el.tagName.toLowerCase() === 'button') {
+                    const onclickValue = attr.value.toLowerCase();
+                    // Only allow very specific safe onclick patterns for dice rolls and simple alerts
+                    const isSafe = /^alert\s*\(/.test(onclickValue) && 
+                                   !/<script|javascript:|eval|function|window|document/.test(onclickValue);
+                    if (!isSafe) {
+                        el.removeAttribute(attr.name);
+                    }
+                } else {
+                    el.removeAttribute(attr.name);
+                }
             }
         });
         
@@ -56,7 +67,7 @@ function sanitizeHTML(html) {
 const CONFIG = {
     OPENAI_MODEL: 'gpt-3.5-turbo',
     TEMPERATURE: 0.8,
-    MAX_TOKENS: 1000,
+    MAX_TOKENS: 2000,  // Increased to support more diverse and complex experiences
     MAX_PROMPT_LENGTH: 500  // Limit for prompt injection protection and API efficiency
 };
 
@@ -259,57 +270,29 @@ async function generateExperience() {
     elements.regenerateBtn.disabled = true;
 
     try {
-        // Generate a random theme/prompt for variety
-        const themes = [
-            'a futuristic space station',
-            'an enchanted forest',
-            'a cyberpunk city',
-            'an underwater civilization',
-            'a steampunk laboratory',
-            'a mystical mountain temple',
-            'a post-apocalyptic wasteland',
-            'a magical library',
-            'a retro-futuristic diner',
-            'an interdimensional portal hub'
-        ];
+        const prompt = `Generate a completely unique and unexpected experience. 
 
-        const contentTypes = [
-            'interactive story',
-            'exploration guide',
-            'mysterious message',
-            'creative adventure',
-            'philosophical journey'
-        ];
+        You have COMPLETE creative control. Choose any format, genre, or modality you want. This could be:
+        - A game (text adventure, RPG, puzzle, point-and-click, dungeon crawler, etc.)
+        - A story (choose-your-own-adventure, interactive fiction, mystery, etc.)
+        - An interface (retro computer terminal, dystopian bureaucracy, hacker webpage, etc.)
+        - A world to explore (museum, building, dimension, timeline, etc.)
+        - A creative format (blog, email inbox, chat conversation, social media, etc.)
+        - Something completely different and unexpected
 
-        const randomTheme = themes[Math.floor(Math.random() * themes.length)];
-        const randomType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
-
-        const prompt = `Create a unique, engaging, and creative ${randomType} set in ${randomTheme}. 
-        
-        CRITICAL REQUIREMENTS:
+        CRITICAL TECHNICAL REQUIREMENTS:
         - Your response MUST be ONLY valid HTML content
-        - The HTML will be inserted directly into a <div> element in a web page
         - Do NOT include <html>, <head>, or <body> tags
         - Do NOT include any explanatory text before or after the HTML
-        - Start immediately with HTML tags (e.g., <h1>, <div>, <p>, etc.)
-        
-        Content Requirements:
-        - Include a clear title using <h1> or <h2>
-        - Add 3-5 paragraphs of engaging content
-        - Include 3-5 clickable links (use href="#") that represent different sections or choices
-        - Use semantic HTML tags: <h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <blockquote>, etc.
-        - Add visual variety with lists, quotes, or emphasized text
-        - Keep total content under 500 words
-        - Make it immersive and unique
-        
-        Example format (DO NOT copy this, create something completely different):
-        <h1>Your Title Here</h1>
-        <p>Opening paragraph...</p>
-        <ul>
-          <li><a href="#">Link 1</a></li>
-          <li><a href="#">Link 2</a></li>
-        </ul>
-        <p>More content...</p>`;
+        - Start immediately with HTML tags
+
+        INTERACTION MODEL:
+        - You decide how users navigate (links, buttons, forms, clickable areas, etc.)
+        - You decide how many interactive elements are needed (no fixed number required)
+        - Match the interaction model to the experience type
+        - Make interactions meaningful and contextual
+
+        Make this experience memorable, immersive, and completely different from what might be expected. Be bold. Be creative. Surprise and delight.`;
 
         const generatedHTML = await state.aiProvider.generateContent(prompt);
 
@@ -319,13 +302,26 @@ async function generateExperience() {
         // Display the sanitized generated content
         elements.generatedContent.innerHTML = sanitizedHTML;
 
-        // Add click handlers to generated links for SPA behavior
+        // Add click handlers to generated links and buttons for SPA behavior
         const links = elements.generatedContent.querySelectorAll('a');
         links.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                handleLinkClick(link);
+                handleInteraction(link);
             });
+        });
+
+        // Add click handlers to buttons (except those with explicit onclick that use alerts/simple interactions)
+        const buttons = elements.generatedContent.querySelectorAll('button');
+        buttons.forEach(button => {
+            // Only add navigation handler if button doesn't have onclick attribute
+            // (to allow for simple inline interactions like dice rolls)
+            if (!button.hasAttribute('onclick')) {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    handleInteraction(button);
+                });
+            }
         });
 
         state.generatedContent = generatedHTML;
@@ -347,42 +343,47 @@ async function generateExperience() {
     }
 }
 
-// Handle link clicks in generated content
-async function handleLinkClick(link) {
+// Handle interactive element clicks in generated content (links, buttons, etc.)
+async function handleInteraction(element) {
     // Sanitize inputs to prevent prompt injection
-    const linkText = sanitizePromptText(link.textContent);
-    const linkContext = sanitizePromptText(link.getAttribute('href') || link.getAttribute('data-context') || '');
+    const elementText = sanitizePromptText(element.textContent);
+    const elementContext = sanitizePromptText(
+        element.getAttribute('href') || 
+        element.getAttribute('data-context') || 
+        element.getAttribute('title') || 
+        element.tagName.toLowerCase()
+    );
 
     // Show loading state (escape HTML for safe display)
-    const escapedLinkText = escapeHTML(linkText);
+    const escapedElementText = escapeHTML(elementText);
     elements.generatedContent.innerHTML = `
         <div class="loading">
             <div class="spinner"></div>
-            <p>Loading: ${escapedLinkText}...</p>
+            <p>Loading: ${escapedElementText}...</p>
         </div>
     `;
 
     elements.regenerateBtn.disabled = true;
 
     try {
-        const prompt = `The user clicked on a link titled "${linkText}" in context "${linkContext}". 
-        Generate new HTML content that represents what this link would lead to. 
-        Make it feel like a natural continuation or new section of an interactive experience.
+        const prompt = `The user interacted with an element labeled "${elementText}" (context: "${elementContext}"). 
         
-        CRITICAL REQUIREMENTS:
+        Generate the next part of this experience. Continue in the same style/format as the current experience, or evolve it naturally based on the interaction.
+        
+        You have COMPLETE creative freedom to:
+        - Continue the current experience type (game, story, interface, etc.)
+        - Evolve or transform the experience based on this choice
+        - Maintain consistency with the previous context or diverge creatively
+        - Choose the appropriate interaction model (links, buttons, forms, etc.)
+        - Decide how many interactive elements are needed for this next step
+        
+        CRITICAL TECHNICAL REQUIREMENTS:
         - Your response MUST be ONLY valid HTML content
-        - The HTML will be inserted directly into a <div> element in a web page
         - Do NOT include <html>, <head>, or <body> tags
         - Do NOT include any explanatory text before or after the HTML
         - Start immediately with HTML tags
         
-        Content Requirements:
-        - Include a clear title related to "${linkText}"
-        - Add 3-5 paragraphs of engaging content
-        - Include 3-5 new clickable links (use href="#") for further navigation
-        - Use semantic HTML tags
-        - Keep it under 500 words
-        - Make it relevant to the clicked link`;
+        Make this feel like a natural and engaging continuation. Match the tone and style of the overall experience while adding new depth, surprises, or developments.`;
 
         const generatedHTML = await state.aiProvider.generateContent(prompt);
 
@@ -391,13 +392,24 @@ async function handleLinkClick(link) {
 
         elements.generatedContent.innerHTML = sanitizedHTML;
 
-        // Add click handlers to new links
+        // Add click handlers to new links and buttons
         const links = elements.generatedContent.querySelectorAll('a');
         links.forEach(newLink => {
             newLink.addEventListener('click', (e) => {
                 e.preventDefault();
-                handleLinkClick(newLink);
+                handleInteraction(newLink);
             });
+        });
+
+        const buttons = elements.generatedContent.querySelectorAll('button');
+        buttons.forEach(button => {
+            // Only add navigation handler if button doesn't have onclick attribute
+            if (!button.hasAttribute('onclick')) {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    handleInteraction(button);
+                });
+            }
         });
 
     } catch (error) {
