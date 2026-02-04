@@ -575,7 +575,7 @@ async function generateExperience() {
             <div class="spinner"></div>
             <p>Generating your unique experience...</p>
             <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
-                This may take a few moments...
+                Choosing a theme and format...
             </p>
         </div>
     `;
@@ -583,36 +583,71 @@ async function generateExperience() {
     elements.regenerateBtn.disabled = true;
 
     try {
-        const prompt = `Generate a completely unique and unexpected experience. 
+        // Step 1: Generate a random theme
+        const theme = await state.aiProvider.generateTheme();
+        
+        // Update loading message
+        elements.generatedContent.innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Generating your unique experience...</p>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
+                    Theme: ${escapeHTML(theme)}
+                </p>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">
+                    Selecting experience type...
+                </p>
+            </div>
+        `;
+        
+        // Step 2: Generate a random experience type
+        const experienceType = await state.aiProvider.generateExperienceType();
+        
+        // Update loading message
+        elements.generatedContent.innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Generating your unique experience...</p>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
+                    Theme: ${escapeHTML(theme)}
+                </p>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">
+                    Format: ${escapeHTML(experienceType)}
+                </p>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">
+                    Creating experience...
+                </p>
+            </div>
+        `;
+        
+        // Step 3: Generate the actual experience using the theme and type
+        const prompt = `Create an interactive experience with the following specifications:
 
-        You have COMPLETE creative control. Choose any format, genre, or modality you want. This could be:
-        - A game (text adventure, RPG, puzzle, point-and-click, dungeon crawler, etc.)
-        - A story (choose-your-own-adventure, interactive fiction, mystery, etc.)
-        - An interface (retro computer terminal, dystopian bureaucracy, hacker webpage, etc.)
-        - A world to explore (museum, building, dimension, timeline, etc.)
-        - A creative format (blog, email inbox, chat conversation, social media, etc.)
-        - Something completely different and unexpected
+THEME: ${theme}
+FORMAT/TYPE: ${experienceType}
 
-        CRITICAL TECHNICAL REQUIREMENTS:
-        - Your response MUST be ONLY valid HTML content
-        - Do NOT include <html>, <head>, or <body> tags
-        - Do NOT include any explanatory text before or after the HTML
-        - Start immediately with HTML tags
+Combine these two elements to create a unique, cohesive experience. The theme should influence the content, setting, and atmosphere, while the format determines the structure and interaction model.
 
-        INTERACTION MODEL:
-        - You decide how users navigate (links, buttons, forms, clickable areas, etc.)
-        - You decide how many interactive elements are needed (no fixed number required)
-        - Match the interaction model to the experience type
-        - Make interactions meaningful and contextual
+CRITICAL TECHNICAL REQUIREMENTS:
+- Your response MUST be ONLY valid HTML content
+- Do NOT include <html>, <head>, or <body> tags
+- Do NOT include any explanatory text before or after the HTML
+- Start immediately with HTML tags
 
-        METADATA SUPPORT (OPTIONAL):
-        - You can add a data-metadata attribute to any element with a JSON object containing state, stats, or context
-        - You can add data-* attributes to interactive elements (links, buttons) to pass custom metadata to the next experience
-        - For example: <button data-choice="warrior" data-strength="10">Recruit Warrior</button>
-        - Or: <div data-metadata='{"theme":"fantasy","level":1}'>...</div>
-        - This metadata will be passed to subsequent experiences to maintain continuity
+INTERACTION MODEL:
+- You decide how users navigate (links, buttons, forms, clickable areas, etc.)
+- You decide how many interactive elements are needed (no fixed number required)
+- Match the interaction model to the experience type
+- Make interactions meaningful and contextual
 
-        Make this experience memorable, immersive, and completely different from what might be expected. Be bold. Be creative. Surprise and delight.`;
+METADATA SUPPORT (OPTIONAL):
+- You can add a data-metadata attribute to any element with a JSON object containing state, stats, or context
+- You can add data-* attributes to interactive elements (links, buttons) to pass custom metadata to the next experience
+- For example: <button data-choice="warrior" data-strength="10">Recruit Warrior</button>
+- Or: <div data-metadata='{"theme":"fantasy","level":1}'>...</div>
+- This metadata will be passed to subsequent experiences to maintain continuity
+
+Make this experience memorable, immersive, and true to both the theme and format. Be creative, bold, and surprising.`;
 
         const generatedHTML = await state.aiProvider.generateContent(prompt);
 
@@ -624,20 +659,27 @@ async function generateExperience() {
         
         // Extract metadata from the generated HTML
         const metadata = extractMetadataFromHTML(sanitizedHTML);
+        
+        // Add theme and experience type to metadata for continuity
+        const enhancedMetadata = {
+            ...metadata,
+            theme: theme,
+            experienceType: experienceType
+        };
 
         // Add to history
         addToHistory({
             html: sanitizedHTML,
             contextId: contextId,
             timestamp: new Date().toISOString(),
-            metadata: metadata
+            metadata: enhancedMetadata
         });
 
         // Display the sanitized generated content
         displayExperience({
             html: sanitizedHTML,
             contextId: contextId,
-            metadata: metadata
+            metadata: enhancedMetadata
         });
 
         state.generatedContent = generatedHTML;

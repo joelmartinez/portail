@@ -3,6 +3,77 @@
  * Abstracts AI service interactions to support multiple providers
  */
 
+// Prompt for generating random theme
+const THEME_GENERATION_PROMPT = `Generate a single, unique theme for an interactive web experience. Return ONLY the theme name (1-3 words), nothing else. Be creative and diverse. Consider themes like:
+- Fantasy (medieval, high fantasy, dark fantasy, fairy tale)
+- Sci-fi (cyberpunk, space opera, post-apocalyptic, time travel)
+- Horror (cosmic, psychological, gothic, survival)
+- Historical (ancient civilizations, specific eras, alternate history)
+- Mundane (everyday life, slice of life, ordinary situations made interesting)
+- Surreal (dreamscapes, abstract concepts, nonsensical logic)
+- Mystery (noir, detective, conspiracy, puzzle)
+- Adventure (exploration, treasure hunting, survival)
+- Comedy (absurd, satirical, parody, slapstick)
+- Romance (various settings and tones)
+- Educational (science, art, history, skills)
+- Professional (corporate, bureaucratic, technical)
+- Cultural (specific regions, traditions, subcultures)
+- Nature (wilderness, oceanic, cosmic, microscopic)
+- Technological (retro computing, AI, virtual reality, hacking)
+- Philosophical (existential, ethical dilemmas, thought experiments)
+- Supernatural (magic, occult, paranormal, mythology)
+- Sports/Games (traditional sports, esports, board games, competitions)
+- Social (communities, relationships, networks, hierarchies)
+- Or any other creative theme you can imagine
+
+Return just the theme name.`;
+
+// Prompt for generating random experience type
+const EXPERIENCE_TYPE_GENERATION_PROMPT = `Generate a single, unique experience type/format for an interactive web application. Return ONLY the experience type (2-5 words), nothing else. Be creative and diverse. Consider formats like:
+- Interactive story with branching paths
+- Text-based adventure game
+- Point-and-click exploration
+- Turn-based battle system
+- Puzzle or logic challenge
+- Visual novel with choices
+- Simulation or management interface
+- Terminal or command-line interface
+- Vintage computer or retro OS
+- Interactive museum or gallery
+- Personal blog or journal
+- Email inbox or messaging app
+- Social media feed or profile
+- News broadcast or article
+- Educational tutorial or lesson
+- Quiz or trivia game
+- Inventory management system
+- Character creation screen
+- Shop or marketplace interface
+- Map with explorable locations
+- Timeline of events
+- Database or archive browser
+- Form or application process
+- Chat conversation interface
+- Recipe or cookbook format
+- Travel guide or brochure
+- Instruction manual or guide
+- Research paper or documentation
+- Support ticket system
+- Calendar or scheduling app
+- Dashboard or analytics view
+- Creative writing prompt generator
+- Music player or audio experience
+- Art gallery or portfolio
+- Escape room or locked box puzzle
+- Choose-your-own-adventure book
+- Interactive comic or graphic novel
+- Tabletop RPG session
+- Card game or deck builder
+- Strategy game board
+- Or any other creative format you can imagine
+
+Return just the experience type.`;
+
 // System prompt for OpenAI content generation
 const OPENAI_SYSTEM_PROMPT = `You are a wildly creative experience designer with complete control over the user experience. You're not just generating content - you're crafting unique, interactive experiences that can be ANYTHING you imagine.
 
@@ -12,74 +83,34 @@ CRITICAL TECHNICAL REQUIREMENTS:
 3. Do NOT include <html>, <head>, or <body> tags
 4. The HTML will be inserted directly into a <div> container
 
-YOUR CREATIVE FREEDOM - THE EXPERIENCE CAN BE ANYTHING:
-You are the driver. You decide the genre, format, interaction model, and modality. Each experience should be wildly different. Consider these examples (but create your own unique variations):
+YOUR CREATIVE FREEDOM:
+You are the driver. You decide the genre, format, interaction model, and modality. Each experience should be wildly different and creative. Don't limit yourself to common patterns - be bold, experimental, and unexpected.
 
-DIVERSE EXPERIENCE TYPES (not limited to these):
-- Choose-your-own-adventure stories with branching narratives
-- Interactive children's picture books with illustrated scenes
-- D&D adventures with dice rolling mechanics (use buttons for rolls, actions will trigger new experiences)
-- 2D side-scroller game interfaces with action buttons
-- 3D dungeon crawler navigation systems
-- Dystopian line-of-business applications (bureaucratic forms, status reports, dystopian corporate interfaces)
-- Hacker's geocities-style webpage with hidden secrets and easter eggs
-- Personal blogs (suburban mom blog, tech blogger, mystery writer) that evolve as you navigate
-- Historical museums with exhibits and artifacts
-- Backrooms exploration documentation (mysterious buildings, liminal spaces, unsettling discoveries)
-- Band/artist websites with generated music using Tone.js or audio elements
-- Point-and-click adventure game scenes
-- Text-based RPG battle systems
-- Scientific research terminals
-- Vintage computer interfaces (command line, terminal UIs, retro OS)
-- Interactive fiction with inventory systems
-- Puzzle boxes and escape room challenges
-- News broadcasts from alternate timelines
-- Shopping catalogs from bizarre dimensions
-- Social media feeds from fictional characters
-- Email inboxes with unfolding mysteries
-- Chat conversations with AI entities
-- Recipe blogs with surreal ingredients
-- Travel guides to impossible places
-- Instruction manuals for incomprehensible devices
-- Academic papers on fictional subjects
-- Support tickets from other realities
-- Dating profiles from strange beings
-- Real estate listings for unusual properties
-- And ANYTHING else you can imagine!
-
-INTERACTION MODELS (you decide what fits):
-The interaction model should match the experience type. You're not limited to links:
-- Links (<a href="#">) for traditional navigation
-- Buttons for actions, dice rolls, choices, or game moves
-- Forms for input, searches, or character creation
-- Interactive elements like collapsible sections, tabs, or accordions
-- Click areas on ASCII art or SVG illustrations
-- List items that are clickable choices
-- Cards or tiles representing options
-- Timeline events that can be explored
-- Map locations that can be visited
-- Inventory items that can be used
-- You decide how many interactive elements are appropriate (could be 2, could be 20)
+INTERACTION MODELS:
+The interaction model should match the experience type. You have complete flexibility:
+- Use links, buttons, forms, or any clickable elements
+- Create as many or as few interactive elements as appropriate for the experience
+- Match the interaction style to your chosen format and theme
+- Make interactions meaningful and contextual
 
 VISUAL & INTERACTIVE ELEMENTS:
-- Use inline CSS for styling to create unique aesthetics
-- Generate inline SVG for illustrations, icons, diagrams, maps, UI elements
+- Use inline CSS for styling to create unique aesthetics matching your theme
+- Generate inline SVG for illustrations, icons, diagrams, maps, or UI elements
 - Create ASCII art for retro terminals or text-based adventures
-- Use tables, grids, or creative layouts
-- Add visual flair with colors, borders, backgrounds that match the theme
-- Include progress bars, status indicators, health bars, resource counters
-- Create visual hierarchies appropriate to the experience type
-- Use emojis strategically for icons and visual markers
+- Use creative layouts (tables, grids, flexbox, etc.)
+- Add visual flair that matches the theme and format
+- Include any UI elements needed (progress bars, status indicators, counters, etc.)
+- Use emojis strategically if they fit the experience
 
 TECHNICAL CAPABILITIES:
 - Use data-* attributes to store state or context for navigation
-- Create interactive elements (buttons, links, etc.) - all interactions will trigger new experience generation
+- Create interactive elements - all interactions will trigger new experience generation
 - Build responsive layouts that work across devices
-- Use semantic HTML5 (article, section, aside, nav, etc.) appropriately
-- Generate unique IDs or classes for styling specific elements
+- Use semantic HTML5 appropriately
+- Generate unique IDs or classes for styling
 
 TONE & STYLE:
-Match your tone to the experience type. Be immersive. Be unexpected. Be creative. Make each generation feel like entering a completely different world or interface. The user should be delighted, surprised, intrigued, or mystified by what you create.
+Match your tone to the experience type and theme. Be immersive. Be unexpected. Be creative. Make each generation feel like entering a completely different world or interface. The user should be delighted, surprised, intrigued, or mystified by what you create.
 
 Remember: YOU are in control of the experience. Don't default to safe choices. Be bold. Be weird. Be creative. Make something memorable.`;
 
@@ -235,6 +266,78 @@ class OpenAIProvider extends AIProvider {
         }
 
         return content;
+    }
+
+    /**
+     * Generate a random theme for an experience
+     * @returns {Promise<string>} A theme name
+     */
+    async generateTheme() {
+        const response = await fetch(`${this.baseURL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiKey}`
+            },
+            body: JSON.stringify({
+                model: this.defaultModel,
+                messages: [
+                    {
+                        role: 'user',
+                        content: THEME_GENERATION_PROMPT
+                    }
+                ],
+                temperature: 1.0, // High creativity for diverse theme selection
+                max_tokens: 40 // Allow for longer theme names (1-3 words with tokenization overhead)
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+            throw new Error('Invalid response structure from OpenAI API');
+        }
+
+        return data.choices[0].message.content.trim();
+    }
+
+    /**
+     * Generate a random experience type for an experience
+     * @returns {Promise<string>} An experience type
+     */
+    async generateExperienceType() {
+        const response = await fetch(`${this.baseURL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiKey}`
+            },
+            body: JSON.stringify({
+                model: this.defaultModel,
+                messages: [
+                    {
+                        role: 'user',
+                        content: EXPERIENCE_TYPE_GENERATION_PROMPT
+                    }
+                ],
+                temperature: 1.0, // High creativity for diverse type selection
+                max_tokens: 60 // Allow for longer experience type names (2-5 words with tokenization overhead)
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+            throw new Error('Invalid response structure from OpenAI API');
+        }
+
+        return data.choices[0].message.content.trim();
     }
 
     static getAvailableModels() {
