@@ -663,8 +663,8 @@ Make this experience memorable, immersive, and true to both the theme and format
         // Add theme and experience type to metadata for continuity
         const enhancedMetadata = {
             ...metadata,
-            initialTheme: theme,
-            initialExperienceType: experienceType
+            theme: theme,
+            experienceType: experienceType
         };
 
         // Add to history
