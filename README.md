@@ -10,6 +10,9 @@ Portail is a unique single-page application (SPA) that creates entirely AI-gener
 
 - **Dynamic Content Generation**: All UI, content, and links are generated in real-time
 - **Completely Unique**: Each generation creates an entirely different experience
+- **Agentic Loop**: Multi-step planning and execution for complex experiences like games and interactive applications
+- **Smart Status Updates**: Fun, entertaining messages that keep you engaged during generation
+- **Increased Context**: Leverages larger context windows (up to 128K tokens) for richer, more detailed experiences
 - **Client-Side Only**: Runs entirely in your browser - no server-side code
 - **Privacy-Focused**: Your API key is never sent to our servers
 - **Interactive**: Click generated links to explore AI-created content dynamically
@@ -73,13 +76,35 @@ open http://localhost:8000
 
 - **Pure JavaScript**: No frameworks or build tools required
 - **SPA Architecture**: All navigation is dynamic DOM manipulation
-- **OpenAI Integration**: Uses the Chat Completions API (GPT-3.5-turbo)
+- **OpenAI Integration**: Uses the Chat Completions API with multiple model support
+- **Agentic Loop**: Multi-step planning and execution system for complex experiences
+- **Large Context Windows**: Supports up to 128K tokens for GPT-4o/GPT-4o-mini/GPT-4-turbo
 - **Responsive Design**: Works on desktop and mobile devices
 - **Metadata System**: Supports passing context between experiences via data attributes
 
+### Agentic Loop Feature
+
+Portail now includes an intelligent agentic loop that automatically detects complex experiences (games, forms, applications) and breaks generation into multiple planned steps:
+
+- **Automatic Complexity Detection**: Identifies when multi-step generation is beneficial
+- **Multi-Step Execution**: Complex experiences use 2-3 steps (foundation → features → polish)
+- **Simple Experiences**: Still use efficient single-step generation
+- **Fun Status Messages**: 32 entertaining messages across 4 phases keep users engaged
+- **Step History**: Full tracking of each step with IDs and metadata
+- **Continuity**: Each step builds upon previous steps for cohesive results
+
+**Examples of complex experiences benefiting from multi-step:**
+- Turn-based RPG battle systems
+- Interactive forms with validation
+- Management/simulation games
+- Terminal interfaces
+- Choose-your-own-adventure stories
+
+See `AGENTIC_LOOP.md` for detailed documentation.
+
 ### Metadata Feature
 
-Portail now supports passing metadata between experiences to maintain continuity and context. This enables:
+Portail supports passing metadata between experiences to maintain continuity and context. This enables:
 
 - **Static Metadata**: Embed state in HTML using `data-metadata` attributes with JSON objects
 - **Dynamic Metadata**: Add custom `data-*` attributes to interactive elements (links, buttons)
