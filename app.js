@@ -819,10 +819,10 @@ For this first step:
 - Include data-metadata with initial state that will be built upon
 
 CRITICAL - MATCH THE FORMAT APPROPRIATELY:
-- If creating a "blog" or "news" site, set up the header and start with 5-8 article previews
-- If creating a "dashboard", establish the grid layout with initial widgets
+- If creating a "blog" or "news" site, set up the header and start with 5-10 article previews (will add more in later steps)
+- If creating a "dashboard", establish the grid layout with initial widgets (will expand in later steps)
 - If creating a "game", set up the game board/interface and initial state
-- If creating a "museum" or "gallery", show the entrance with preview of exhibits
+- If creating a "museum" or "gallery", show the entrance with preview of exhibits (will add more in later steps)
 - DON'T default to generic "3 choices" - match the actual format type
 
 IMPORTANT: This is just the foundation. Subsequent steps will add more complexity and interactivity.

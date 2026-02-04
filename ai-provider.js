@@ -95,7 +95,7 @@ CRITICAL - AVOID REPETITIVE PATTERNS:
 
 INTERACTION MODELS - BE DIVERSE:
 The interaction model should match the experience type. You have complete flexibility:
-- **News/Blog**: Multiple article headlines as links, maybe 5-15 articles
+- **News/Blog**: Multiple article headlines as links, maybe 8-15 articles
 - **Dashboard**: Grid of widgets, each clickable for details (6-12 widgets)
 - **Game**: Could be a board, card grid, inventory list, stat screens
 - **Form/Application**: Input fields, dropdowns, checkboxes, submit buttons
