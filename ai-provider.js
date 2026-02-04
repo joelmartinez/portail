@@ -139,7 +139,27 @@ class OpenAIProvider extends AIProvider {
         this.baseURL = 'https://api.openai.com/v1';
         this.defaultModel = config.model || 'gpt-4o-mini';
         this.temperature = config.temperature || 0.8;
-        this.maxTokens = config.maxTokens || 2000;  // Increased to support diverse experiences
+        this.maxTokens = config.maxTokens || this.getDefaultMaxTokens(config.model || 'gpt-4o-mini');
+    }
+
+    /**
+     * Get default max tokens based on model capabilities
+     * Models have different context windows, so we can use more tokens for generation
+     * @param {string} model - The model name
+     * @returns {number} Default max tokens for the model
+     */
+    getDefaultMaxTokens(model) {
+        // Context windows: GPT-4o, GPT-4o-mini, GPT-4-turbo: 128K
+        // GPT-4: 32K (some deployments have 128K)
+        // We use a reasonable portion of context for output to leave room for prompts
+        const modelTokenLimits = {
+            'gpt-4o-mini': 16000,      // 128K context, use ~16K for complex generations
+            'gpt-4o': 16000,           // 128K context, use ~16K for complex generations  
+            'gpt-4-turbo': 16000,      // 128K context, use ~16K for complex generations
+            'gpt-4': 8000              // 32K context, use ~8K for complex generations
+        };
+        
+        return modelTokenLimits[model] || 4000; // Default for unknown models
     }
 
     async validate() {
