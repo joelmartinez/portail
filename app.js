@@ -23,11 +23,11 @@ function sanitizeHTML(html) {
                     let normalizedValue = onclickValue;
                     try {
                         // Try to decode any Unicode/hex escapes
-                        normalizedValue = onclickValue.replace(/\\u[\dA-Fa-f]{4}/g, (match) => {
-                            return String.fromCharCode(parseInt(match.substring(2), 16));
+                        normalizedValue = onclickValue.replace(/\\u([\dA-Fa-f]{4})/g, (match, hex) => {
+                            return String.fromCharCode(parseInt(hex, 16));
                         });
-                        normalizedValue = normalizedValue.replace(/\\x[\dA-Fa-f]{2}/g, (match) => {
-                            return String.fromCharCode(parseInt(match.substring(2), 16));
+                        normalizedValue = normalizedValue.replace(/\\x([\dA-Fa-f]{2})/g, (match, hex) => {
+                            return String.fromCharCode(parseInt(hex, 16));
                         });
                     } catch (e) {
                         // If decoding fails, use original value
@@ -35,7 +35,7 @@ function sanitizeHTML(html) {
                     
                     // Check for dangerous keywords and patterns (using normalized value)
                     // Block semicolons to prevent statement chaining
-                    const hasDangerousKeywords = /(\beval\b|\bFunction\b|javascript:|<script[\s>]|\.constructor|\bprototype\b|__proto__|location\.|document\.|window\.|globalThis\.|cookie|import\s|require\(|\bthis\b|;)/i.test(normalizedValue);
+                    const hasDangerousKeywords = /(\beval\b|\bFunction\b|javascript:|<script\b|\.constructor|\bprototype\b|__proto__|location\.|document\.|window\.|globalThis\.|cookie|import\s|require\(|\bthis\b|;)/i.test(normalizedValue);
                     
                     // Must start with alert( and end with ) - nothing else allowed  
                     const isValidAlertCall = /^alert\s*\(.+\)\s*$/.test(normalizedValue.trim());
@@ -45,7 +45,7 @@ function sanitizeHTML(html) {
                     let usesSafeMathOnly = true;
                     if (usesMath) {
                         // Math is used - ensure only safe Math methods are called
-                        const safeMathPattern = /^Math\.(floor|ceil|round|random|abs|min|max|pow|sqrt|sign)$/i;
+                        const safeMathPattern = /\bMath\.(floor|ceil|round|random|abs|min|max|pow|sqrt|sign)\b/i;
                         const mathUsages = normalizedValue.match(/Math\.\w+/gi) || [];
                         usesSafeMathOnly = mathUsages.every(usage => safeMathPattern.test(usage));
                     }
