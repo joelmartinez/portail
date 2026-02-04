@@ -86,12 +86,29 @@ CRITICAL TECHNICAL REQUIREMENTS:
 YOUR CREATIVE FREEDOM:
 You are the driver. You decide the genre, format, interaction model, and modality. Each experience should be wildly different and creative. Don't limit yourself to common patterns - be bold, experimental, and unexpected.
 
-INTERACTION MODELS:
+CRITICAL - AVOID REPETITIVE PATTERNS:
+- DO NOT default to "3 button choices" every time
+- DO NOT always create "choose your own adventure" structures
+- VARY the number of interactive elements: sometimes 1, sometimes 2, sometimes 5, sometimes 10+
+- Mix up layouts: blogs with multiple article links, dashboards with many widgets, forms with fields, grids of items, lists, tables, maps with locations
+- Create different modalities: read-only content, input forms, drag-and-drop interfaces, hover interactions, click-to-reveal
+
+INTERACTION MODELS - BE DIVERSE:
 The interaction model should match the experience type. You have complete flexibility:
-- Use links, buttons, forms, or any clickable elements
-- Create as many or as few interactive elements as appropriate for the experience
-- Match the interaction style to your chosen format and theme
-- Make interactions meaningful and contextual
+- **News/Blog**: Multiple article headlines as links, maybe 5-15 articles
+- **Dashboard**: Grid of widgets, each clickable for details (6-12 widgets)
+- **Game**: Could be a board, card grid, inventory list, stat screens
+- **Form/Application**: Input fields, dropdowns, checkboxes, submit buttons
+- **Terminal**: Command input with history of previous commands
+- **Museum/Gallery**: Grid or list of exhibits/artworks (8-20 items)
+- **Email/Messaging**: List of messages, each clickable
+- **Map/Explorer**: SVG map with 5-15 clickable locations
+- **Shop**: Product grid with 10-20 items
+- **Social Feed**: 7-12 posts with various interaction points
+- **Timeline**: Events spread across a visual timeline
+- **Quiz**: Questions with multiple choice options (but not always 3!)
+- **Puzzle**: Visual grid or interactive elements
+- Choose your adventure: Sometimes, but NOT the default
 
 VISUAL & INTERACTIVE ELEMENTS:
 - Use inline CSS for styling to create unique aesthetics matching your theme
@@ -109,10 +126,22 @@ TECHNICAL CAPABILITIES:
 - Use semantic HTML5 appropriately
 - Generate unique IDs or classes for styling
 
+LAYOUT EXAMPLES TO INSPIRE VARIETY:
+1. Blog: Header with title, then 8-12 article summaries as clickable links
+2. Dashboard: 2x3 or 3x3 grid of metric cards, each interactive
+3. Terminal: Black background, green text, command prompt, history of 5-8 previous commands
+4. Email: Inbox UI with 10-15 email previews in a list
+5. Museum: Gallery grid with 12-16 exhibit thumbnails
+6. Game Board: Visual grid (chess, tic-tac-toe scaled up, match-3 style)
+7. Form: Multi-field form with 5-10 inputs and validation messages
+8. Map: SVG-based map with 8-12 location markers
+9. News Site: Headline layout with feature article + 10 smaller stories
+10. Social Feed: Timeline with 8-10 posts of varying types
+
 TONE & STYLE:
 Match your tone to the experience type and theme. Be immersive. Be unexpected. Be creative. Make each generation feel like entering a completely different world or interface. The user should be delighted, surprised, intrigued, or mystified by what you create.
 
-Remember: YOU are in control of the experience. Don't default to safe choices. Be bold. Be weird. Be creative. Make something memorable.`;
+Remember: YOU are in control of the experience. Don't default to safe choices. Be bold. Be weird. Be creative. Make something memorable. AVOID THE "3 BUTTONS" TRAP.`;
 
 class AIProvider {
     constructor(apiKey, config = {}) {
