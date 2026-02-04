@@ -172,6 +172,80 @@ function extractContextFromHTML(html) {
     return 'Initial Experience';
 }
 
+// Extract metadata from HTML (static metadata via data-metadata attribute)
+function extractMetadataFromHTML(html) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    // Look for elements with data-metadata attribute
+    const metadataElement = temp.querySelector('[data-metadata]');
+    if (metadataElement) {
+        try {
+            const metadataStr = metadataElement.getAttribute('data-metadata');
+            return JSON.parse(metadataStr);
+        } catch (e) {
+            // Invalid JSON in data-metadata attribute - skip it
+            console.warn('Invalid JSON in data-metadata attribute:', e);
+        }
+    }
+    
+    // Return empty object if no metadata found
+    return {};
+}
+
+// Collect metadata from element interaction
+function collectInteractionMetadata(element, parentMetadata = {}) {
+    const metadata = { ...parentMetadata };
+    
+    // Add interaction type
+    metadata.lastInteractionType = element.tagName.toLowerCase();
+    
+    // Collect data attributes as metadata
+    Array.from(element.attributes).forEach(attr => {
+        if (attr.name.startsWith('data-') && attr.name !== 'data-action-type' && attr.name !== 'data-alert-message') {
+            const key = attr.name.replace('data-', '');
+            try {
+                // Try to parse as JSON first
+                metadata[key] = JSON.parse(attr.value);
+            } catch (e) {
+                // JSON parsing failed - treat as plain string
+                metadata[key] = attr.value;
+            }
+        }
+    });
+    
+    // Track interaction count
+    metadata.interactionCount = (metadata.interactionCount || 0) + 1;
+    
+    return metadata;
+}
+
+// Format metadata for AI prompt
+function formatMetadataForPrompt(metadata) {
+    if (!metadata || Object.keys(metadata).length === 0) {
+        return '';
+    }
+    
+    // Convert metadata to a readable format for the AI
+    const metadataLines = Object.entries(metadata)
+        .filter(([key, value]) => value !== undefined && value !== null)
+        .map(([key, value]) => {
+            if (typeof value === 'object') {
+                return `- ${key}: ${JSON.stringify(value)}`;
+            }
+            return `- ${key}: ${value}`;
+        });
+    
+    if (metadataLines.length === 0) {
+        return '';
+    }
+    
+    return `\n\nCONTEXT METADATA - Use this information to inform the next experience:
+${metadataLines.join('\n')}
+
+This metadata represents the state, choices, and context from previous interactions. Use it to create continuity and make the next experience feel personalized and contextual.`;
+}
+
 // Configuration
 const CONFIG = {
     OPENAI_MODEL: 'gpt-3.5-turbo',
@@ -435,7 +509,7 @@ function displayExperience(experience) {
     links.forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            handleInteraction(link, experience.contextId);
+            handleInteraction(link, experience.contextId, experience.metadata || {});
         });
     });
 
@@ -443,7 +517,7 @@ function displayExperience(experience) {
     buttons.forEach(button => {
         button.addEventListener('click', (e) => {
             e.preventDefault();
-            handleInteraction(button, experience.contextId);
+            handleInteraction(button, experience.contextId, experience.metadata || {});
         });
     });
 }
@@ -531,6 +605,13 @@ async function generateExperience() {
         - Match the interaction model to the experience type
         - Make interactions meaningful and contextual
 
+        METADATA SUPPORT (OPTIONAL):
+        - You can add a data-metadata attribute to any element with a JSON object containing state, stats, or context
+        - You can add data-* attributes to interactive elements (links, buttons) to pass custom metadata to the next experience
+        - For example: <button data-choice="warrior" data-strength="10">Recruit Warrior</button>
+        - Or: <div data-metadata='{"theme":"fantasy","level":1}'>...</div>
+        - This metadata will be passed to subsequent experiences to maintain continuity
+
         Make this experience memorable, immersive, and completely different from what might be expected. Be bold. Be creative. Surprise and delight.`;
 
         const generatedHTML = await state.aiProvider.generateContent(prompt);
@@ -540,18 +621,23 @@ async function generateExperience() {
 
         // Extract a meaningful context ID from the generated content
         const contextId = extractContextFromHTML(sanitizedHTML);
+        
+        // Extract metadata from the generated HTML
+        const metadata = extractMetadataFromHTML(sanitizedHTML);
 
         // Add to history
         addToHistory({
             html: sanitizedHTML,
             contextId: contextId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            metadata: metadata
         });
 
         // Display the sanitized generated content
         displayExperience({
             html: sanitizedHTML,
-            contextId: contextId
+            contextId: contextId,
+            metadata: metadata
         });
 
         state.generatedContent = generatedHTML;
@@ -574,7 +660,7 @@ async function generateExperience() {
 }
 
 // Handle interactive element clicks in generated content (links, buttons, etc.)
-async function handleInteraction(element, parentContextId = '') {
+async function handleInteraction(element, parentContextId = '', parentMetadata = {}) {
     // Sanitize inputs to prevent prompt injection
     const elementText = sanitizePromptText(element.textContent);
     const elementContext = sanitizePromptText(
@@ -589,6 +675,9 @@ async function handleInteraction(element, parentContextId = '') {
     const newContextId = parentContextId 
         ? `${parentContextId} -> ${elementText}`
         : elementText;
+    
+    // Collect metadata from this interaction
+    const newMetadata = collectInteractionMetadata(element, parentMetadata);
 
     // Show loading state (escape HTML for safe display)
     const escapedElementText = escapeHTML(elementText);
@@ -602,12 +691,15 @@ async function handleInteraction(element, parentContextId = '') {
     elements.regenerateBtn.disabled = true;
 
     try {
+        // Format metadata for the prompt
+        const metadataPrompt = formatMetadataForPrompt(newMetadata);
+        
         const prompt = `The user interacted with an element labeled "${elementText}" (context: "${elementContext}").
 
 IMPORTANT CONTEXT CHAIN - Maintain continuity with this thread of choices:
 ${newContextId}
 
-This context chain represents the user's journey through this experience. Each step should acknowledge and build upon the previous choices to maintain narrative and thematic coherence.
+This context chain represents the user's journey through this experience. Each step should acknowledge and build upon the previous choices to maintain narrative and thematic coherence.${metadataPrompt}
 
 Generate the next part of this experience. Continue in the same style/format as the current experience, or evolve it naturally based on the interaction WHILE MAINTAINING THE CONTEXT ESTABLISHED BY THE CHAIN ABOVE.
 
@@ -619,6 +711,13 @@ You have COMPLETE creative freedom to:
 - Decide how many interactive elements are needed for this next step
 
 CRITICAL: Remember the context chain. If this is part of a story about recruiting warriors for an adventuring party, don't forget that original goal. If this is exploring a museum, remember which exhibits have been visited. Keep the thread alive.
+
+METADATA SUPPORT (OPTIONAL):
+- You can add a data-metadata attribute to any element with a JSON object containing state, stats, or context
+- You can add data-* attributes to interactive elements (links, buttons) to pass custom metadata to the next experience
+- For example: <button data-choice="warrior" data-strength="10">Recruit Warrior</button>
+- Or: <div data-metadata='{"theme":"fantasy","level":2}'>...</div>
+- This metadata will be passed to subsequent experiences to maintain continuity
 
 CRITICAL TECHNICAL REQUIREMENTS:
 - Your response MUST be ONLY valid HTML content
@@ -632,18 +731,26 @@ Make this feel like a natural and engaging continuation that respects and builds
 
         // Sanitize the AI-generated HTML to prevent XSS attacks
         const sanitizedHTML = sanitizeHTML(generatedHTML);
+        
+        // Extract metadata from the new HTML
+        const extractedMetadata = extractMetadataFromHTML(sanitizedHTML);
+        
+        // Merge with interaction metadata
+        const finalMetadata = { ...newMetadata, ...extractedMetadata };
 
         // Add to history
         addToHistory({
             html: sanitizedHTML,
             contextId: newContextId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            metadata: finalMetadata
         });
 
         // Display the experience
         displayExperience({
             html: sanitizedHTML,
-            contextId: newContextId
+            contextId: newContextId,
+            metadata: finalMetadata
         });
 
     } catch (error) {

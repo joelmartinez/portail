@@ -13,6 +13,7 @@ Portail is a unique single-page application (SPA) that creates entirely AI-gener
 - **Client-Side Only**: Runs entirely in your browser - no server-side code
 - **Privacy-Focused**: Your API key is never sent to our servers
 - **Interactive**: Click generated links to explore AI-created content dynamically
+- **Metadata Passing**: Experiences can pass context and state to subsequent experiences
 - **GitHub Pages Ready**: Hosted as a static site
 
 ## 🚀 Live Demo
@@ -74,6 +75,40 @@ open http://localhost:8000
 - **SPA Architecture**: All navigation is dynamic DOM manipulation
 - **OpenAI Integration**: Uses the Chat Completions API (GPT-3.5-turbo)
 - **Responsive Design**: Works on desktop and mobile devices
+- **Metadata System**: Supports passing context between experiences via data attributes
+
+### Metadata Feature
+
+Portail now supports passing metadata between experiences to maintain continuity and context. This enables:
+
+- **Static Metadata**: Embed state in HTML using `data-metadata` attributes with JSON objects
+- **Dynamic Metadata**: Add custom `data-*` attributes to interactive elements (links, buttons)
+- **Automatic Collection**: On interaction, all data attributes are collected and merged
+- **AI Integration**: Metadata is formatted and passed to the AI prompt for context-aware generation
+
+#### Example Usage
+
+**Static metadata:**
+```html
+<div data-metadata='{"theme":"fantasy","level":1,"playerClass":"warrior"}'>
+    <h3>Quest Beginning</h3>
+    <p>You stand at the entrance to the Dark Forest...</p>
+</div>
+```
+
+**Dynamic metadata on interactions:**
+```html
+<button data-choice="recruit" data-character="warrior" data-strength="10">
+    Recruit Warrior
+</button>
+<a href="#" data-location="dungeon" data-danger-level="5">
+    Explore Dungeon
+</a>
+```
+
+When users interact with these elements, the metadata is automatically collected and passed to the next experience, allowing the AI to maintain continuity, track stats, remember choices, and create personalized experiences.
+
+See `test-metadata.html` for more examples.
 
 ## 📝 Future Plans
 
