@@ -18,16 +18,39 @@ function sanitizeHTML(html) {
                 if (attr.name === 'onclick' && el.tagName.toLowerCase() === 'button') {
                     const onclickValue = attr.value;
                     
-                    // Check for dangerous keywords and patterns
-                    // Note: Using word boundaries (\b) to avoid false positives like 'function' in 'Math.floor'
-                    const hasDangerousKeywords = /(\beval\b|\bFunction\b|javascript:|<script|\.constructor|\bprototype\b|__proto__|location\.|document\.|window\.|cookie|import\s|require\(|\bthis\b)/i.test(onclickValue);
-                    const isAlertCall = /^alert\s*\(/i.test(onclickValue.trim());
+                    // Normalize to prevent encoding-based bypasses
+                    // This handles Unicode escapes like \u0065val and other encoding tricks
+                    let normalizedValue = onclickValue;
+                    try {
+                        // Try to decode any Unicode/hex escapes
+                        normalizedValue = onclickValue.replace(/\\u[\dA-Fa-f]{4}/g, (match) => {
+                            return String.fromCharCode(parseInt(match.substring(2), 16));
+                        });
+                        normalizedValue = normalizedValue.replace(/\\x[\dA-Fa-f]{2}/g, (match) => {
+                            return String.fromCharCode(parseInt(match.substring(2), 16));
+                        });
+                    } catch (e) {
+                        // If decoding fails, use original value
+                    }
                     
-                    // Additionally, ensure only safe Math operations if Math is used
-                    const usesMath = /\bMath\./i.test(onclickValue);
-                    const usesSafeMathOnly = !usesMath || /^alert\s*\([^)]*\bMath\.(floor|ceil|round|random|abs|min|max)\s*\(/i.test(onclickValue.trim());
+                    // Check for dangerous keywords and patterns (using normalized value)
+                    // Block semicolons to prevent statement chaining
+                    const hasDangerousKeywords = /(\beval\b|\bFunction\b|javascript:|<script[\s>]|\.constructor|\bprototype\b|__proto__|location\.|document\.|window\.|globalThis\.|cookie|import\s|require\(|\bthis\b|;)/i.test(normalizedValue);
                     
-                    if (!isAlertCall || hasDangerousKeywords || !usesSafeMathOnly) {
+                    // Must start with alert( and end with ) - nothing else allowed  
+                    const isValidAlertCall = /^alert\s*\(.+\)\s*$/.test(normalizedValue.trim());
+                    
+                    // If Math is used, ensure it's only calling safe methods (no property access to constructor etc.)
+                    const usesMath = /\bMath\b/i.test(normalizedValue);
+                    let usesSafeMathOnly = true;
+                    if (usesMath) {
+                        // Math is used - ensure only safe Math methods are called
+                        const safeMathPattern = /^Math\.(floor|ceil|round|random|abs|min|max|pow|sqrt|sign)$/i;
+                        const mathUsages = normalizedValue.match(/Math\.\w+/gi) || [];
+                        usesSafeMathOnly = mathUsages.every(usage => safeMathPattern.test(usage));
+                    }
+                    
+                    if (!isValidAlertCall || hasDangerousKeywords || !usesSafeMathOnly) {
                         el.removeAttribute(attr.name);
                     }
                 } else {
@@ -358,7 +381,8 @@ async function handleInteraction(element) {
         element.getAttribute('href') || 
         element.getAttribute('data-context') || 
         element.getAttribute('title') || 
-        element.tagName.toLowerCase()
+        element.tagName.toLowerCase() ||
+        'unknown'
     );
 
     // Show loading state (escape HTML for safe display)
