@@ -14,13 +14,16 @@ function sanitizeHTML(html) {
         // Remove event handler attributes except onclick on buttons (allow for simple interactions)
         Array.from(el.attributes).forEach(attr => {
             if (attr.name.startsWith('on')) {
-                // Allow onclick on buttons if it's a simple safe interaction (alert, Math.random, etc.)
+                // Allow onclick on buttons only if it's a very specific safe pattern
                 if (attr.name === 'onclick' && el.tagName.toLowerCase() === 'button') {
-                    const onclickValue = attr.value.toLowerCase();
-                    // Only allow very specific safe onclick patterns for dice rolls and simple alerts
-                    const isSafe = /^alert\s*\(/.test(onclickValue) && 
-                                   !/<script|javascript:|eval|function|window|document/.test(onclickValue);
-                    if (!isSafe) {
+                    const onclickValue = attr.value;
+                    // Only allow very specific safe onclick patterns:
+                    // 1. alert() calls that don't contain dangerous keywords
+                    // 2. Must not contain: script, eval, function, window, document, location, cookie
+                    const hasDangerousKeywords = /(script|javascript:|eval|function|window|document|location|cookie|import|require)/i.test(onclickValue);
+                    const isAlertCall = /^alert\s*\(/i.test(onclickValue.trim());
+                    
+                    if (!isAlertCall || hasDangerousKeywords) {
                         el.removeAttribute(attr.name);
                     }
                 } else {
