@@ -129,7 +129,10 @@ const state = {
     currentScreen: 'warning',
     generatedContent: null,
     aiProvider: null,
-    selectedModel: 'gpt-4o-mini'
+    selectedModel: 'gpt-4o-mini',
+    history: [],
+    currentHistoryIndex: -1,
+    isNavigating: false
 };
 
 // DOM Elements
@@ -152,7 +155,10 @@ const elements = {
     apiError: document.getElementById('api-error'),
     generatedContent: document.getElementById('generated-content'),
     regenerateBtn: document.getElementById('regenerate-btn'),
-    resetBtn: document.getElementById('reset-btn')
+    resetBtn: document.getElementById('reset-btn'),
+    historyPanel: document.getElementById('history-panel'),
+    toggleHistoryBtn: document.getElementById('toggle-history-btn'),
+    historyList: document.getElementById('history-list')
 };
 
 // Screen Navigation
@@ -250,10 +256,24 @@ function initializeEventListeners() {
         if (confirm('This will clear your API key and reset the application. Continue?')) {
             state.apiKey = null;
             state.generatedContent = null;
+            state.history = [];
+            state.currentHistoryIndex = -1;
             elements.apiKeyInput.value = '';
             elements.acknowledgeCheckbox.checked = false;
             elements.proceedBtn.disabled = true;
             showScreen('warning');
+        }
+    });
+
+    // History panel toggle
+    elements.toggleHistoryBtn.addEventListener('click', () => {
+        elements.historyPanel.classList.toggle('collapsed');
+    });
+
+    // Browser back/forward navigation
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.historyIndex !== undefined) {
+            navigateToHistoryIndex(event.state.historyIndex);
         }
     });
 }
@@ -282,6 +302,118 @@ async function testApiKey() {
         elements.startBtn.disabled = false;
         elements.startBtn.textContent = 'Start Experience';
     }
+}
+
+// History Management Functions
+function addToHistory(experience) {
+    // If we're not at the end of history (user went back), remove forward history
+    if (state.currentHistoryIndex < state.history.length - 1) {
+        state.history = state.history.slice(0, state.currentHistoryIndex + 1);
+    }
+
+    // Add new experience to history
+    state.history.push(experience);
+    state.currentHistoryIndex = state.history.length - 1;
+
+    // Update browser history
+    const historyState = {
+        historyIndex: state.currentHistoryIndex
+    };
+    
+    if (state.currentHistoryIndex === 0) {
+        // Replace state for first entry
+        window.history.replaceState(historyState, '', window.location.href);
+    } else {
+        // Push new state for subsequent entries
+        window.history.pushState(historyState, '', window.location.href);
+    }
+
+    updateHistoryUI();
+}
+
+function navigateToHistoryIndex(index) {
+    if (index < 0 || index >= state.history.length) {
+        return;
+    }
+
+    state.isNavigating = true;
+    state.currentHistoryIndex = index;
+
+    const experience = state.history[index];
+    displayExperience(experience);
+
+    updateHistoryUI();
+    state.isNavigating = false;
+}
+
+function displayExperience(experience) {
+    // Sanitize and display the saved HTML
+    const sanitizedHTML = sanitizeHTML(experience.html);
+    elements.generatedContent.innerHTML = sanitizedHTML;
+
+    // Add click handlers to links and buttons
+    const links = elements.generatedContent.querySelectorAll('a');
+    links.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleInteraction(link, experience.contextId);
+        });
+    });
+
+    const buttons = elements.generatedContent.querySelectorAll('button');
+    buttons.forEach(button => {
+        if (!button.hasAttribute('onclick')) {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                handleInteraction(button, experience.contextId);
+            });
+        }
+    });
+}
+
+function updateHistoryUI() {
+    const historyList = elements.historyList;
+
+    if (state.history.length === 0) {
+        historyList.innerHTML = '<p class="history-empty">No history yet</p>';
+        return;
+    }
+
+    // Build history list from oldest to newest
+    let historyHTML = '';
+    state.history.forEach((item, index) => {
+        const isActive = index === state.currentHistoryIndex;
+        const activeClass = isActive ? ' active' : '';
+        
+        // Escape HTML for safe display
+        const escapedContext = escapeHTML(item.contextId);
+        
+        historyHTML += `
+            <div class="history-item${activeClass}" data-index="${index}">
+                <div class="history-item-index">#${index + 1}</div>
+                <div class="history-item-context">${escapedContext}</div>
+            </div>
+        `;
+    });
+
+    historyList.innerHTML = historyHTML;
+
+    // Add click handlers to history items
+    const historyItems = historyList.querySelectorAll('.history-item');
+    historyItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const index = parseInt(item.getAttribute('data-index'));
+            if (index !== state.currentHistoryIndex) {
+                // Update browser history
+                window.history.pushState(
+                    { historyIndex: index },
+                    '',
+                    window.location.href
+                );
+                navigateToHistoryIndex(index);
+            }
+        });
+    });
 }
 
 // Generate Experience using OpenAI
@@ -329,29 +461,20 @@ async function generateExperience() {
         // Sanitize the AI-generated HTML to prevent XSS attacks
         const sanitizedHTML = sanitizeHTML(generatedHTML);
 
-        // Display the sanitized generated content
-        elements.generatedContent.innerHTML = sanitizedHTML;
+        // Create context ID for this initial experience
+        const contextId = 'Initial Experience';
 
-        // Add click handlers to generated links and buttons for SPA behavior
-        const links = elements.generatedContent.querySelectorAll('a');
-        links.forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                handleInteraction(link);
-            });
+        // Add to history
+        addToHistory({
+            html: sanitizedHTML,
+            contextId: contextId,
+            timestamp: new Date().toISOString()
         });
 
-        // Add click handlers to buttons (except those with explicit onclick that use alerts/simple interactions)
-        const buttons = elements.generatedContent.querySelectorAll('button');
-        buttons.forEach(button => {
-            // Only add navigation handler if button doesn't have onclick attribute
-            // (to allow for simple inline interactions like dice rolls)
-            if (!button.hasAttribute('onclick')) {
-                button.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    handleInteraction(button);
-                });
-            }
+        // Display the sanitized generated content
+        displayExperience({
+            html: sanitizedHTML,
+            contextId: contextId
         });
 
         state.generatedContent = generatedHTML;
@@ -374,7 +497,7 @@ async function generateExperience() {
 }
 
 // Handle interactive element clicks in generated content (links, buttons, etc.)
-async function handleInteraction(element) {
+async function handleInteraction(element, parentContextId = '') {
     // Sanitize inputs to prevent prompt injection
     const elementText = sanitizePromptText(element.textContent);
     const elementContext = sanitizePromptText(
@@ -384,6 +507,11 @@ async function handleInteraction(element) {
         element.tagName.toLowerCase() ||
         'unknown'
     );
+
+    // Build context ID chain
+    const newContextId = parentContextId 
+        ? `${parentContextId} -> ${elementText}`
+        : elementText;
 
     // Show loading state (escape HTML for safe display)
     const escapedElementText = escapeHTML(elementText);
@@ -397,50 +525,48 @@ async function handleInteraction(element) {
     elements.regenerateBtn.disabled = true;
 
     try {
-        const prompt = `The user interacted with an element labeled "${elementText}" (context: "${elementContext}"). 
-        
-        Generate the next part of this experience. Continue in the same style/format as the current experience, or evolve it naturally based on the interaction.
-        
-        You have COMPLETE creative freedom to:
-        - Continue the current experience type (game, story, interface, etc.)
-        - Evolve or transform the experience based on this choice
-        - Maintain consistency with the previous context or diverge creatively
-        - Choose the appropriate interaction model (links, buttons, forms, etc.)
-        - Decide how many interactive elements are needed for this next step
-        
-        CRITICAL TECHNICAL REQUIREMENTS:
-        - Your response MUST be ONLY valid HTML content
-        - Do NOT include <html>, <head>, or <body> tags
-        - Do NOT include any explanatory text before or after the HTML
-        - Start immediately with HTML tags
-        
-        Make this feel like a natural and engaging continuation. Match the tone and style of the overall experience while adding new depth, surprises, or developments.`;
+        const prompt = `The user interacted with an element labeled "${elementText}" (context: "${elementContext}").
+
+IMPORTANT CONTEXT CHAIN - Maintain continuity with this thread of choices:
+${newContextId}
+
+This context chain represents the user's journey through this experience. Each step should acknowledge and build upon the previous choices to maintain narrative and thematic coherence.
+
+Generate the next part of this experience. Continue in the same style/format as the current experience, or evolve it naturally based on the interaction WHILE MAINTAINING THE CONTEXT ESTABLISHED BY THE CHAIN ABOVE.
+
+You have COMPLETE creative freedom to:
+- Continue the current experience type (game, story, interface, etc.)
+- Evolve or transform the experience based on this choice
+- Maintain consistency with the previous context chain
+- Choose the appropriate interaction model (links, buttons, forms, etc.)
+- Decide how many interactive elements are needed for this next step
+
+CRITICAL: Remember the context chain. If this is part of a story about recruiting warriors for an adventuring party, don't forget that original goal. If this is exploring a museum, remember which exhibits have been visited. Keep the thread alive.
+
+CRITICAL TECHNICAL REQUIREMENTS:
+- Your response MUST be ONLY valid HTML content
+- Do NOT include <html>, <head>, or <body> tags
+- Do NOT include any explanatory text before or after the HTML
+- Start immediately with HTML tags
+
+Make this feel like a natural and engaging continuation that respects and builds upon the journey represented in the context chain.`;
 
         const generatedHTML = await state.aiProvider.generateContent(prompt);
 
         // Sanitize the AI-generated HTML to prevent XSS attacks
         const sanitizedHTML = sanitizeHTML(generatedHTML);
 
-        elements.generatedContent.innerHTML = sanitizedHTML;
-
-        // Add click handlers to new links and buttons
-        const links = elements.generatedContent.querySelectorAll('a');
-        links.forEach(newLink => {
-            newLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                handleInteraction(newLink);
-            });
+        // Add to history
+        addToHistory({
+            html: sanitizedHTML,
+            contextId: newContextId,
+            timestamp: new Date().toISOString()
         });
 
-        const buttons = elements.generatedContent.querySelectorAll('button');
-        buttons.forEach(button => {
-            // Only add navigation handler if button doesn't have onclick attribute
-            if (!button.hasAttribute('onclick')) {
-                button.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    handleInteraction(button);
-                });
-            }
+        // Display the experience
+        displayExperience({
+            html: sanitizedHTML,
+            contextId: newContextId
         });
 
     } catch (error) {
