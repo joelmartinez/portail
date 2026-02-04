@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metadata Test - Portail</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .example {
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Metadata Feature Test Examples</h1>
+    
+    <div class="test-section">
+        <h2>1. Static Metadata (data-metadata attribute)</h2>
+        <p>An experience can embed static metadata using the <code>data-metadata</code> attribute:</p>
+        <div class="example" data-metadata='{"theme":"fantasy","difficulty":"medium","playerClass":"warrior"}'>
+            <h3>Quest Beginning</h3>
+            <p>You stand at the entrance to the Dark Forest, your sword gleaming in the moonlight.</p>
+            <p>Metadata embedded: theme=fantasy, difficulty=medium, playerClass=warrior</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Dynamic Metadata (data-* attributes on interactions)</h2>
+        <p>Interactive elements can have custom data attributes that get passed as metadata:</p>
+        <div class="example">
+            <h3>Choose Your Path</h3>
+            <p>Which direction will you go?</p>
+            <button data-direction="north" data-danger-level="3">North (Dangerous)</button>
+            <button data-direction="south" data-danger-level="1">South (Safe)</button>
+            <button data-direction="east" data-danger-level="5" data-treasure="true">East (Treasure!)</button>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. RPG-Style Stats Tracking</h2>
+        <p>Track player stats across experiences:</p>
+        <div class="example" data-metadata='{"health":100,"mana":50,"gold":25,"inventory":["sword","potion"]}'>
+            <h3>Character Status</h3>
+            <p>Your character has accumulated resources on this journey.</p>
+            <a href="#" data-action="shop" data-item-cost="15">Visit Shop</a>
+            <a href="#" data-action="heal" data-cost-mana="10">Cast Healing Spell</a>
+            <a href="#" data-action="fight" data-enemy="dragon" data-enemy-level="10">Fight Dragon</a>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Story Choices Tracking</h2>
+        <p>Remember previous choices to influence narrative:</p>
+        <div class="example">
+            <h3>Recruitment</h3>
+            <p>You can recruit companions for your party:</p>
+            <button data-recruit="warrior" data-strength="10" data-defense="8">Recruit Warrior</button>
+            <button data-recruit="mage" data-intelligence="10" data-magic="9">Recruit Mage</button>
+            <button data-recruit="rogue" data-agility="10" data-stealth="9">Recruit Rogue</button>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. Location/Progress Tracking</h2>
+        <p>Keep track of where the player has been:</p>
+        <div class="example" data-metadata='{"currentLocation":"castle","visitedLocations":["village","forest","castle"],"questProgress":3}'>
+            <h3>The Castle</h3>
+            <p>You've explored the village and forest, and now stand before the castle gates.</p>
+            <a href="#" data-next-location="throne-room">Enter Throne Room</a>
+            <a href="#" data-next-location="dungeon">Explore Dungeon</a>
+            <a href="#" data-action="return" data-location="village">Return to Village</a>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>How It Works</h2>
+        <ul>
+            <li><strong>Static Metadata:</strong> Add <code>data-metadata</code> to any element with a JSON object</li>
+            <li><strong>Dynamic Metadata:</strong> Add custom <code>data-*</code> attributes to interactive elements</li>
+            <li><strong>Automatic Collection:</strong> On interaction, all data attributes are collected</li>
+            <li><strong>AI Integration:</strong> Metadata is formatted and passed to the AI prompt</li>
+            <li><strong>Continuity:</strong> The AI uses metadata to create contextual, personalized experiences</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h2>Testing in Portail</h2>
+        <p>To test this feature in the actual Portail application:</p>
+        <ol>
+            <li>Open the Portail application</li>
+            <li>Ask the AI to create an experience with metadata (e.g., "Create an RPG with stat tracking")</li>
+            <li>The AI can now use the metadata support to add <code>data-metadata</code> and <code>data-*</code> attributes</li>
+            <li>When you interact with elements, metadata is automatically collected and passed to the next experience</li>
+            <li>The AI receives this metadata and can use it to maintain continuity and context</li>
+        </ol>
+    </div>
+</body>
+</html>
