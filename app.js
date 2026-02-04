@@ -106,6 +106,9 @@ function sanitizeHTML(html) {
 
 // Extract meaningful context from HTML content for use as contextId
 function extractContextFromHTML(html) {
+    const MAX_CONTEXT_LENGTH = 100; // Maximum characters for context ID
+    const MIN_MEANINGFUL_TEXT_LENGTH = 10; // Minimum text length to be considered meaningful
+    
     const temp = document.createElement('div');
     temp.innerHTML = html;
     
@@ -113,7 +116,7 @@ function extractContextFromHTML(html) {
     for (let i = 1; i <= 6; i++) {
         const heading = temp.querySelector(`h${i}`);
         if (heading && heading.textContent.trim()) {
-            return heading.textContent.trim().slice(0, 100); // Limit to 100 chars
+            return heading.textContent.trim().slice(0, MAX_CONTEXT_LENGTH);
         }
     }
     
@@ -122,7 +125,7 @@ function extractContextFromHTML(html) {
     if (elementWithTitle) {
         const title = elementWithTitle.getAttribute('data-title') || elementWithTitle.getAttribute('title');
         if (title && title.trim()) {
-            return title.trim().slice(0, 100);
+            return title.trim().slice(0, MAX_CONTEXT_LENGTH);
         }
     }
     
@@ -130,8 +133,8 @@ function extractContextFromHTML(html) {
     const paragraphs = temp.querySelectorAll('p');
     for (const p of paragraphs) {
         const text = p.textContent.trim();
-        if (text && text.length > 10) { // Only use if it has some content
-            return text.slice(0, 100);
+        if (text && text.length > MIN_MEANINGFUL_TEXT_LENGTH) {
+            return text.slice(0, MAX_CONTEXT_LENGTH);
         }
     }
     
@@ -141,7 +144,7 @@ function extractContextFromHTML(html) {
         // Take the first meaningful line
         const firstLine = allText.split('\n')[0].trim();
         if (firstLine) {
-            return firstLine.slice(0, 100);
+            return firstLine.slice(0, MAX_CONTEXT_LENGTH);
         }
     }
     
