@@ -14,16 +14,20 @@ function sanitizeHTML(html) {
         // Remove event handler attributes except onclick on buttons (allow for simple interactions)
         Array.from(el.attributes).forEach(attr => {
             if (attr.name.startsWith('on')) {
-                // Allow onclick on buttons only if it's a very specific safe pattern
+                // Allow onclick on buttons only if it matches a very specific safe pattern
                 if (attr.name === 'onclick' && el.tagName.toLowerCase() === 'button') {
                     const onclickValue = attr.value;
-                    // Only allow very specific safe onclick patterns:
-                    // 1. alert() calls that don't contain dangerous keywords
-                    // 2. Must not contain: script, eval, function, window, document, location, cookie
-                    const hasDangerousKeywords = /(script|javascript:|eval|function|window|document|location|cookie|import|require)/i.test(onclickValue);
+                    
+                    // Check for dangerous keywords and patterns
+                    // Note: Using word boundaries (\b) to avoid false positives like 'function' in 'Math.floor'
+                    const hasDangerousKeywords = /(\beval\b|\bFunction\b|javascript:|<script|\.constructor|\bprototype\b|__proto__|location\.|document\.|window\.|cookie|import\s|require\(|\bthis\b)/i.test(onclickValue);
                     const isAlertCall = /^alert\s*\(/i.test(onclickValue.trim());
                     
-                    if (!isAlertCall || hasDangerousKeywords) {
+                    // Additionally, ensure only safe Math operations if Math is used
+                    const usesMath = /\bMath\./i.test(onclickValue);
+                    const usesSafeMathOnly = !usesMath || /^alert\s*\([^)]*\bMath\.(floor|ceil|round|random|abs|min|max)\s*\(/i.test(onclickValue.trim());
+                    
+                    if (!isAlertCall || hasDangerousKeywords || !usesSafeMathOnly) {
                         el.removeAttribute(attr.name);
                     }
                 } else {
