@@ -251,7 +251,53 @@ const CONFIG = {
     OPENAI_MODEL: 'gpt-3.5-turbo',
     TEMPERATURE: 0.8,
     MAX_TOKENS: 2000,  // Increased to support more diverse and complex experiences
-    MAX_PROMPT_LENGTH: 500  // Limit for prompt injection protection and API efficiency
+    MAX_PROMPT_LENGTH: 500,  // Limit for prompt injection protection and API efficiency
+    ENABLE_AGENTIC_LOOP: true,  // Enable multi-step agentic planning and execution
+    MAX_AGENTIC_STEPS: 3  // Maximum number of agentic steps for complex experiences
+};
+
+// Fun status messages for agentic loop phases
+const AGENTIC_STATUS_MESSAGES = {
+    thinking: [
+        "🤔 Contemplating the nature of existence... and your experience",
+        "💭 Channeling creative energies from the digital cosmos...",
+        "🎨 Sketching blueprints in the void...",
+        "✨ Consulting the ancient tomes of randomness...",
+        "🎲 Rolling the dice of creativity...",
+        "🔮 Peering into the crystal ball of possibilities...",
+        "🧙 Brewing a potion of pure imagination...",
+        "🌟 Aligning the stars for your journey..."
+    ],
+    planning: [
+        "📋 Drafting a master plan worthy of a heist movie...",
+        "🗺️ Charting unexplored territories of fun...",
+        "📐 Engineering the architecture of delight...",
+        "🎯 Calculating optimal paths to amazement...",
+        "🧩 Assembling the puzzle pieces of awesome...",
+        "⚡ Supercharging the idea generator...",
+        "🚀 Preparing for launch into the unknown...",
+        "🎪 Coordinating a symphony of chaos..."
+    ],
+    building: [
+        "🏗️ Constructing reality from pure thought...",
+        "⚙️ Fine-tuning the gears of imagination...",
+        "🎨 Painting pixels with digital brushstrokes...",
+        "🔨 Hammering code into submission...",
+        "🧱 Stacking experiences like LEGO bricks...",
+        "🌈 Weaving rainbows into interactive tapestries...",
+        "💫 Sprinkling stardust on your adventure...",
+        "🎭 Setting the stage for your performance..."
+    ],
+    refining: [
+        "✨ Polishing this gem until it shines...",
+        "🔧 Adding the finishing touches...",
+        "💎 Cutting the diamond to perfection...",
+        "🎨 Adding that *chef's kiss* detail...",
+        "🌟 Making it sparkle just a bit more...",
+        "🧹 Sweeping away the rough edges...",
+        "🎯 Zeroing in on perfection...",
+        "🎪 Adding bells, whistles, and confetti..."
+    ]
 };
 
 // Sanitize text for use in prompts to prevent injection
@@ -276,6 +322,50 @@ function escapeHTML(text) {
     return div.innerHTML;
 }
 
+/**
+ * Get a random message from a message category
+ * @param {string} category - The category of message (thinking, planning, building, refining)
+ * @returns {string} A random message from the category
+ */
+function getRandomStatusMessage(category) {
+    const messages = AGENTIC_STATUS_MESSAGES[category] || AGENTIC_STATUS_MESSAGES.thinking;
+    return messages[Math.floor(Math.random() * messages.length)];
+}
+
+/**
+ * Show agentic loop status with fun messages
+ * @param {string} phase - The current phase (thinking, planning, building, refining)
+ * @param {string} details - Details about what's happening
+ * @param {Object} metadata - Optional metadata to show (theme, experienceType, etc.)
+ */
+function showAgenticStatus(phase, details, metadata = {}) {
+    const statusMessage = getRandomStatusMessage(phase);
+    let metadataHTML = '';
+    
+    if (metadata.theme || metadata.experienceType) {
+        metadataHTML = '<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">';
+        if (metadata.theme) {
+            metadataHTML += `<p style="color: var(--text-muted); font-size: 0.9rem;">Theme: <strong>${escapeHTML(metadata.theme)}</strong></p>`;
+        }
+        if (metadata.experienceType) {
+            metadataHTML += `<p style="color: var(--text-muted); font-size: 0.9rem;">Format: <strong>${escapeHTML(metadata.experienceType)}</strong></p>`;
+        }
+        if (metadata.step) {
+            metadataHTML += `<p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">Step ${metadata.step} of ${metadata.totalSteps || '?'}</p>`;
+        }
+        metadataHTML += '</div>';
+    }
+    
+    elements.generatedContent.innerHTML = `
+        <div class="loading">
+            <div class="spinner"></div>
+            <p style="font-size: 1.1rem; margin: 1rem 0;">${statusMessage}</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">${escapeHTML(details)}</p>
+            ${metadataHTML}
+        </div>
+    `;
+}
+
 // App State
 const state = {
     apiKey: null,
@@ -285,7 +375,13 @@ const state = {
     selectedModel: 'gpt-4o-mini',
     history: [],
     currentHistoryIndex: -1,
-    isNavigating: false
+    isNavigating: false,
+    agenticLoop: {
+        enabled: CONFIG.ENABLE_AGENTIC_LOOP,
+        currentStep: 0,
+        totalSteps: 0,
+        stepHistory: []  // Track each step in the agentic loop
+    }
 };
 
 // DOM Elements
@@ -464,8 +560,18 @@ function addToHistory(experience) {
         state.history = state.history.slice(0, state.currentHistoryIndex + 1);
     }
 
+    // Generate unique ID for this experience
+    const experienceId = `exp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Add ID and agentic step info to experience
+    const enrichedExperience = {
+        ...experience,
+        id: experienceId,
+        agenticSteps: state.agenticLoop.stepHistory.length > 0 ? [...state.agenticLoop.stepHistory] : undefined
+    };
+
     // Add new experience to history
-    state.history.push(experience);
+    state.history.push(enrichedExperience);
     state.currentHistoryIndex = state.history.length - 1;
 
     // Update browser history
@@ -567,61 +673,75 @@ function updateHistoryUI() {
     });
 }
 
-// Generate Experience using OpenAI
-async function generateExperience() {
-    // Show loading state
-    elements.generatedContent.innerHTML = `
-        <div class="loading">
-            <div class="spinner"></div>
-            <p>Generating your unique experience...</p>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
-                Choosing a theme and format...
-            </p>
-        </div>
-    `;
+/**
+ * Agentic Loop: Determine if we need multiple steps for a complex experience
+ * @param {string} theme - The theme of the experience
+ * @param {string} experienceType - The type/format of experience
+ * @returns {Promise<Object>} Planning information including whether multi-step is needed
+ */
+async function planExperience(theme, experienceType) {
+    // For now, we'll use simple heuristics to determine complexity
+    // Interactive experiences like games, forms, applications benefit from multi-step planning
+    const complexKeywords = [
+        'game', 'rpg', 'adventure', 'simulation', 'management', 'builder',
+        'form', 'application', 'system', 'interface', 'dashboard',
+        'puzzle', 'quiz', 'battle', 'strategy', 'inventory',
+        'terminal', 'command', 'interactive', 'choose', 'validation'
+    ];
+    
+    const typeWords = experienceType.toLowerCase().split(/\s+/);
+    const isComplex = typeWords.some(word => 
+        complexKeywords.some(keyword => word.includes(keyword))
+    );
+    
+    // Determine number of steps (1-3)
+    let steps = 1;
+    if (isComplex && state.agenticLoop.enabled) {
+        // Complex experiences get 2-3 steps
+        steps = Math.min(CONFIG.MAX_AGENTIC_STEPS, 2 + Math.floor(Math.random() * 2));
+    }
+    
+    return {
+        needsMultipleSteps: steps > 1,
+        totalSteps: steps,
+        complexity: isComplex ? 'high' : 'low',
+        strategy: isComplex 
+            ? 'Multi-step approach: planning, building core functionality, adding interactivity'
+            : 'Single-step generation'
+    };
+}
 
-    elements.regenerateBtn.disabled = true;
-
-    try {
-        // Step 1: Generate a random theme
-        const theme = await state.aiProvider.generateTheme();
+/**
+ * Execute a single step in the agentic loop
+ * @param {number} stepNumber - Current step number (1-indexed)
+ * @param {number} totalSteps - Total number of steps
+ * @param {string} theme - Experience theme
+ * @param {string} experienceType - Experience type
+ * @param {Array} previousSteps - Array of previous step results
+ * @returns {Promise<Object>} Step result with HTML and metadata
+ */
+async function executeAgenticStep(stepNumber, totalSteps, theme, experienceType, previousSteps = []) {
+    const isFirstStep = stepNumber === 1;
+    const isFinalStep = stepNumber === totalSteps;
+    
+    // Record this step
+    const stepId = `step_${Date.now()}_${stepNumber}`;
+    const stepMetadata = {
+        id: stepId,
+        stepNumber,
+        totalSteps,
+        theme,
+        experienceType,
+        timestamp: new Date().toISOString()
+    };
+    
+    let prompt = '';
+    
+    if (totalSteps === 1) {
+        // Single step - generate complete experience
+        showAgenticStatus('building', 'Creating your complete experience...', { theme, experienceType, step: 1, totalSteps: 1 });
         
-        // Update loading message
-        elements.generatedContent.innerHTML = `
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>Generating your unique experience...</p>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
-                    Theme: ${escapeHTML(theme)}
-                </p>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">
-                    Selecting experience type...
-                </p>
-            </div>
-        `;
-        
-        // Step 2: Generate a random experience type
-        const experienceType = await state.aiProvider.generateExperienceType();
-        
-        // Update loading message
-        elements.generatedContent.innerHTML = `
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>Generating your unique experience...</p>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
-                    Theme: ${escapeHTML(theme)}
-                </p>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">
-                    Format: ${escapeHTML(experienceType)}
-                </p>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">
-                    Creating experience...
-                </p>
-            </div>
-        `;
-        
-        // Step 3: Generate the actual experience using the theme and type
-        const prompt = `Create an interactive experience with the following specifications:
+        prompt = `Create an interactive experience with the following specifications:
 
 THEME: ${theme}
 FORMAT/TYPE: ${experienceType}
@@ -648,23 +768,170 @@ METADATA SUPPORT (OPTIONAL):
 - This metadata will be passed to subsequent experiences to maintain continuity
 
 Make this experience memorable, immersive, and true to both the theme and format. Be creative, bold, and surprising.`;
+        
+    } else if (isFirstStep) {
+        // First step of multi-step - create foundation
+        showAgenticStatus('planning', `Planning the foundation (Step ${stepNumber}/${totalSteps})...`, { theme, experienceType, step: stepNumber, totalSteps });
+        
+        prompt = `You are creating a complex interactive experience in MULTIPLE STEPS. This is STEP 1 of ${totalSteps}.
 
-        const generatedHTML = await state.aiProvider.generateContent(prompt);
+THEME: ${theme}
+FORMAT/TYPE: ${experienceType}
 
-        // Sanitize the AI-generated HTML to prevent XSS attacks
-        const sanitizedHTML = sanitizeHTML(generatedHTML);
+Your task for THIS STEP: Create the FOUNDATION and CORE STRUCTURE of the experience.
 
+For this first step:
+- Set up the basic framework and introduction
+- Establish the theme and setting
+- Create the initial state or starting point
+- Add basic interactive elements that will be enhanced in later steps
+- Include data-metadata with initial state that will be built upon
+
+IMPORTANT: This is just the foundation. Subsequent steps will add more complexity and interactivity.
+
+CRITICAL TECHNICAL REQUIREMENTS:
+- Your response MUST be ONLY valid HTML content
+- Do NOT include <html>, <head>, or <body> tags
+- Do NOT include any explanatory text before or after the HTML
+- Start immediately with HTML tags
+
+METADATA: Use data-metadata to store the initial state, and data-* attributes on interactive elements to prepare for the next steps.`;
+        
+    } else if (isFinalStep) {
+        // Final step - complete and polish
+        showAgenticStatus('refining', `Adding final touches (Step ${stepNumber}/${totalSteps})...`, { theme, experienceType, step: stepNumber, totalSteps });
+        
+        const previousStepsContext = previousSteps.map((step, idx) => 
+            `Step ${idx + 1} Result: ${step.contextSummary || 'Built foundation'}`
+        ).join('\n');
+        
+        prompt = `You are creating a complex interactive experience in MULTIPLE STEPS. This is the FINAL STEP ${stepNumber} of ${totalSteps}.
+
+THEME: ${theme}
+FORMAT/TYPE: ${experienceType}
+
+PREVIOUS STEPS:
+${previousStepsContext}
+
+Your task for THIS FINAL STEP: Complete and polish the experience.
+
+For this final step:
+- Build upon everything from previous steps
+- Add the finishing touches and polish
+- Ensure all interactive elements work together cohesively
+- Add any final features that make this a complete, satisfying experience
+- Make sure the experience feels polished and complete
+
+The experience should now be fully functional and engaging.
+
+CRITICAL TECHNICAL REQUIREMENTS:
+- Your response MUST be ONLY valid HTML content
+- Do NOT include <html>, <head>, or <body> tags
+- Do NOT include any explanatory text before or after the HTML
+- Start immediately with HTML tags
+
+METADATA: Ensure data-metadata reflects the complete state, and all interactive elements have appropriate data-* attributes.`;
+        
+    } else {
+        // Middle step - build upon previous
+        showAgenticStatus('building', `Building features (Step ${stepNumber}/${totalSteps})...`, { theme, experienceType, step: stepNumber, totalSteps });
+        
+        const previousStepsContext = previousSteps.map((step, idx) => 
+            `Step ${idx + 1} Result: ${step.contextSummary || 'Added features'}`
+        ).join('\n');
+        
+        prompt = `You are creating a complex interactive experience in MULTIPLE STEPS. This is STEP ${stepNumber} of ${totalSteps}.
+
+THEME: ${theme}
+FORMAT/TYPE: ${experienceType}
+
+PREVIOUS STEPS:
+${previousStepsContext}
+
+Your task for THIS STEP: Build upon the previous work and add more features.
+
+For this middle step:
+- Enhance what was built in previous steps
+- Add more interactive functionality
+- Expand the complexity and depth
+- Keep building toward the complete vision
+- Maintain consistency with previous steps
+
+IMPORTANT: There are more steps after this one, so continue building but don't complete everything yet.
+
+CRITICAL TECHNICAL REQUIREMENTS:
+- Your response MUST be ONLY valid HTML content
+- Do NOT include <html>, <head>, or <body> tags
+- Do NOT include any explanatory text before or after the HTML
+- Start immediately with HTML tags
+
+METADATA: Update data-metadata with the evolved state, and continue using data-* attributes for interactivity.`;
+    }
+    
+    const generatedHTML = await state.aiProvider.generateContent(prompt);
+    const sanitizedHTML = sanitizeHTML(generatedHTML);
+    const contextSummary = extractContextFromHTML(sanitizedHTML).substring(0, 100);
+    
+    stepMetadata.html = sanitizedHTML;
+    stepMetadata.contextSummary = contextSummary;
+    
+    return stepMetadata;
+}
+
+// Generate Experience using OpenAI with Agentic Loop
+async function generateExperience() {
+    // Reset agentic loop state
+    state.agenticLoop.stepHistory = [];
+    state.agenticLoop.currentStep = 0;
+    
+    // Show initial loading state
+    showAgenticStatus('thinking', 'Contemplating the perfect experience for you...');
+
+    elements.regenerateBtn.disabled = true;
+
+    try {
+        // Step 1: Generate a random theme
+        showAgenticStatus('thinking', 'Discovering the perfect theme...');
+        const theme = await state.aiProvider.generateTheme();
+        
+        // Step 2: Generate a random experience type
+        showAgenticStatus('thinking', 'Selecting the ideal format...', { theme });
+        const experienceType = await state.aiProvider.generateExperienceType();
+        
+        // Step 3: Plan the experience (determine if multi-step is needed)
+        showAgenticStatus('planning', 'Analyzing complexity and planning approach...', { theme, experienceType });
+        const plan = await planExperience(theme, experienceType);
+        
+        state.agenticLoop.totalSteps = plan.totalSteps;
+        
+        // Step 4: Execute agentic loop
+        const steps = [];
+        for (let i = 1; i <= plan.totalSteps; i++) {
+            state.agenticLoop.currentStep = i;
+            const stepResult = await executeAgenticStep(i, plan.totalSteps, theme, experienceType, steps);
+            steps.push(stepResult);
+            state.agenticLoop.stepHistory.push(stepResult);
+        }
+        
+        // Use the final step's HTML as the complete experience
+        const finalStep = steps[steps.length - 1];
+        const sanitizedHTML = finalStep.html;
+        
         // Extract a meaningful context ID from the generated content
         const contextId = extractContextFromHTML(sanitizedHTML);
         
         // Extract metadata from the generated HTML
         const metadata = extractMetadataFromHTML(sanitizedHTML);
         
-        // Add theme and experience type to metadata for continuity
+        // Add theme, experience type, and agentic info to metadata for continuity
         const enhancedMetadata = {
             ...metadata,
             theme: theme,
-            experienceType: experienceType
+            experienceType: experienceType,
+            agenticLoop: {
+                totalSteps: plan.totalSteps,
+                complexity: plan.complexity
+            }
         };
 
         // Add to history
@@ -682,7 +949,7 @@ Make this experience memorable, immersive, and true to both the theme and format
             metadata: enhancedMetadata
         });
 
-        state.generatedContent = generatedHTML;
+        state.generatedContent = sanitizedHTML;
 
     } catch (error) {
         const escapedMessage = escapeHTML(error.message || 'Unknown error');
@@ -698,11 +965,17 @@ Make this experience memorable, immersive, and true to both the theme and format
         `;
     } finally {
         elements.regenerateBtn.disabled = false;
+        // Reset agentic state
+        state.agenticLoop.currentStep = 0;
     }
 }
 
 // Handle interactive element clicks in generated content (links, buttons, etc.)
 async function handleInteraction(element, parentContextId = '', parentMetadata = {}) {
+    // Reset agentic loop state for this interaction
+    state.agenticLoop.stepHistory = [];
+    state.agenticLoop.currentStep = 0;
+    
     // Sanitize inputs to prevent prompt injection
     const elementText = sanitizePromptText(element.textContent);
     const elementContext = sanitizePromptText(
@@ -721,22 +994,104 @@ async function handleInteraction(element, parentContextId = '', parentMetadata =
     // Collect metadata from this interaction
     const newMetadata = collectInteractionMetadata(element, parentMetadata);
 
-    // Show loading state (escape HTML for safe display)
-    const escapedElementText = escapeHTML(elementText);
-    elements.generatedContent.innerHTML = `
-        <div class="loading">
-            <div class="spinner"></div>
-            <p>Loading: ${escapedElementText}...</p>
-        </div>
-    `;
+    // Show initial loading state with fun message
+    showAgenticStatus('thinking', `Processing your choice: ${elementText}...`);
 
     elements.regenerateBtn.disabled = true;
 
     try {
+        // Determine if we need agentic loop for this interaction
+        // Check if the current experience is complex (has agenticLoop metadata)
+        const wasComplexExperience = parentMetadata.agenticLoop && parentMetadata.agenticLoop.complexity === 'high';
+        const shouldUseAgenticLoop = wasComplexExperience && state.agenticLoop.enabled;
+        
         // Format metadata for the prompt
         const metadataPrompt = formatMetadataForPrompt(newMetadata);
         
-        const prompt = `The user interacted with an element labeled "${elementText}" (context: "${elementContext}").
+        let generatedHTML;
+        
+        if (shouldUseAgenticLoop) {
+            // Multi-step approach for complex experiences
+            showAgenticStatus('planning', 'Planning the next phase of this complex experience...');
+            
+            // Determine steps needed (1-2 for interactions)
+            const steps = Math.min(2, CONFIG.MAX_AGENTIC_STEPS - 1);
+            state.agenticLoop.totalSteps = steps;
+            
+            const stepResults = [];
+            for (let i = 1; i <= steps; i++) {
+                state.agenticLoop.currentStep = i;
+                
+                if (i === 1) {
+                    showAgenticStatus('building', `Building response to your choice (Step ${i}/${steps})...`);
+                } else {
+                    showAgenticStatus('refining', `Polishing the experience (Step ${i}/${steps})...`);
+                }
+                
+                const previousStepsContext = stepResults.map((step, idx) => 
+                    `Step ${idx + 1}: ${step.contextSummary}`
+                ).join('\n');
+                
+                const stepPrompt = `The user interacted with an element labeled "${elementText}" (context: "${elementContext}").
+
+IMPORTANT CONTEXT CHAIN - Maintain continuity with this thread of choices:
+${newContextId}
+
+This context chain represents the user's journey through this experience. Each step should acknowledge and build upon the previous choices to maintain narrative and thematic coherence.${metadataPrompt}
+
+${stepResults.length > 0 ? `PREVIOUS STEPS IN THIS INTERACTION:\n${previousStepsContext}\n\n` : ''}
+
+${i === steps ? 'This is the FINAL step. Complete and polish the response.' : `This is step ${i} of ${steps}. Build the foundation for the response.`}
+
+Generate the next part of this experience. Continue in the same style/format as the current experience, or evolve it naturally based on the interaction WHILE MAINTAINING THE CONTEXT ESTABLISHED BY THE CHAIN ABOVE.
+
+You have COMPLETE creative freedom to:
+- Continue the current experience type (game, story, interface, etc.)
+- Evolve or transform the experience based on this choice
+- Maintain consistency with the previous context chain
+- Choose the appropriate interaction model (links, buttons, forms, etc.)
+- Decide how many interactive elements are needed for this next step
+
+CRITICAL: Remember the context chain. If this is part of a story about recruiting warriors for an adventuring party, don't forget that original goal. If this is exploring a museum, remember which exhibits have been visited. Keep the thread alive.
+
+METADATA SUPPORT (OPTIONAL):
+- You can add a data-metadata attribute to any element with a JSON object containing state, stats, or context
+- You can add data-* attributes to interactive elements (links, buttons) to pass custom metadata to the next experience
+- For example: <button data-choice="warrior" data-strength="10">Recruit Warrior</button>
+- Or: <div data-metadata='{"theme":"fantasy","level":2}'>...</div>
+- This metadata will be passed to subsequent experiences to maintain continuity
+
+CRITICAL TECHNICAL REQUIREMENTS:
+- Your response MUST be ONLY valid HTML content
+- Do NOT include <html>, <head>, or <body> tags
+- Do NOT include any explanatory text before or after the HTML
+- Start immediately with HTML tags
+
+Make this feel like a natural and engaging continuation that respects and builds upon the journey represented in the context chain.`;
+
+                const stepHTML = await state.aiProvider.generateContent(stepPrompt);
+                const sanitizedStepHTML = sanitizeHTML(stepHTML);
+                const contextSummary = extractContextFromHTML(sanitizedStepHTML).substring(0, 100);
+                
+                const stepMetadata = {
+                    id: `step_${Date.now()}_${i}`,
+                    stepNumber: i,
+                    html: sanitizedStepHTML,
+                    contextSummary
+                };
+                
+                stepResults.push(stepMetadata);
+                state.agenticLoop.stepHistory.push(stepMetadata);
+            }
+            
+            // Use final step as the result
+            generatedHTML = stepResults[stepResults.length - 1].html;
+            
+        } else {
+            // Single-step approach for simpler experiences
+            showAgenticStatus('building', 'Creating the next part of your journey...');
+            
+            const prompt = `The user interacted with an element labeled "${elementText}" (context: "${elementContext}").
 
 IMPORTANT CONTEXT CHAIN - Maintain continuity with this thread of choices:
 ${newContextId}
@@ -769,7 +1124,8 @@ CRITICAL TECHNICAL REQUIREMENTS:
 
 Make this feel like a natural and engaging continuation that respects and builds upon the journey represented in the context chain.`;
 
-        const generatedHTML = await state.aiProvider.generateContent(prompt);
+            generatedHTML = await state.aiProvider.generateContent(prompt);
+        }
 
         // Sanitize the AI-generated HTML to prevent XSS attacks
         const sanitizedHTML = sanitizeHTML(generatedHTML);
@@ -813,6 +1169,8 @@ Make this feel like a natural and engaging continuation that respects and builds
         }
     } finally {
         elements.regenerateBtn.disabled = false;
+        // Reset agentic state
+        state.agenticLoop.currentStep = 0;
     }
 }
 
