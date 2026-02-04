@@ -184,7 +184,8 @@ function extractMetadataFromHTML(html) {
             const metadataStr = metadataElement.getAttribute('data-metadata');
             return JSON.parse(metadataStr);
         } catch (e) {
-            // Invalid JSON, ignore
+            // Invalid JSON in data-metadata attribute - skip it
+            console.warn('Invalid JSON in data-metadata attribute:', e);
         }
     }
     
@@ -207,7 +208,7 @@ function collectInteractionMetadata(element, parentMetadata = {}) {
                 // Try to parse as JSON first
                 metadata[key] = JSON.parse(attr.value);
             } catch (e) {
-                // Otherwise use as string
+                // JSON parsing failed - treat as plain string
                 metadata[key] = attr.value;
             }
         }
