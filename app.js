@@ -53,10 +53,12 @@ function sanitizeHTML(html) {
                     // If it's a valid alert call, convert it to a data attribute for action handling
                     // This allows the button to trigger a new experience generation instead of just showing an alert
                     if (isValidAlertCall && !hasDangerousKeywords && usesSafeMathOnly) {
-                        // Extract the message from alert('message')
-                        const alertMatch = normalizedValue.match(/alert\s*\((.+)\)\s*$/);
-                        if (alertMatch) {
-                            const alertMessage = alertMatch[1].trim();
+                        // Extract the message from alert(...)
+                        // Find content between first ( after 'alert' and the matching closing )
+                        const alertStart = normalizedValue.indexOf('(');
+                        const alertEnd = normalizedValue.lastIndexOf(')');
+                        if (alertStart !== -1 && alertEnd !== -1 && alertEnd > alertStart) {
+                            const alertMessage = normalizedValue.substring(alertStart + 1, alertEnd).trim();
                             el.setAttribute('data-action-type', 'alert');
                             el.setAttribute('data-alert-message', alertMessage);
                         }
@@ -104,11 +106,12 @@ function sanitizeHTML(html) {
     return temp.innerHTML;
 }
 
+// Constants for context extraction
+const MAX_CONTEXT_LENGTH = 100; // Maximum characters for context ID
+const MIN_MEANINGFUL_TEXT_LENGTH = 10; // Minimum text length to be considered meaningful
+
 // Extract meaningful context from HTML content for use as contextId
 function extractContextFromHTML(html) {
-    const MAX_CONTEXT_LENGTH = 100; // Maximum characters for context ID
-    const MIN_MEANINGFUL_TEXT_LENGTH = 10; // Minimum text length to be considered meaningful
-    
     const temp = document.createElement('div');
     temp.innerHTML = html;
     
