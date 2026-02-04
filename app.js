@@ -14,7 +14,7 @@ function sanitizeHTML(html) {
         // Remove event handler attributes except onclick on buttons (allow for simple interactions)
         Array.from(el.attributes).forEach(attr => {
             if (attr.name.startsWith('on')) {
-                // Allow onclick on buttons only if it matches a very specific safe pattern
+                // Convert onclick alert handlers on buttons to data attributes for action handling
                 if (attr.name === 'onclick' && el.tagName.toLowerCase() === 'button') {
                     const onclickValue = attr.value;
                     
@@ -50,9 +50,37 @@ function sanitizeHTML(html) {
                         usesSafeMathOnly = mathUsages.every(usage => safeMathPattern.test(usage));
                     }
                     
-                    if (!isValidAlertCall || hasDangerousKeywords || !usesSafeMathOnly) {
-                        el.removeAttribute(attr.name);
+                    // If it's a valid alert call, convert it to a data attribute for action handling
+                    // This allows the button to trigger a new experience generation instead of just showing an alert
+                    if (isValidAlertCall && !hasDangerousKeywords && usesSafeMathOnly) {
+                        // Extract the message from alert(...) by finding the matching closing parenthesis
+                        const alertStart = normalizedValue.indexOf('(');
+                        if (alertStart !== -1) {
+                            // Track parenthesis depth to find the matching closing parenthesis
+                            let depth = 0;
+                            let alertEnd = -1;
+                            for (let i = alertStart; i < normalizedValue.length; i++) {
+                                if (normalizedValue[i] === '(') {
+                                    depth++;
+                                } else if (normalizedValue[i] === ')') {
+                                    depth--;
+                                    if (depth === 0) {
+                                        alertEnd = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (alertEnd !== -1) {
+                                const alertMessage = normalizedValue.substring(alertStart + 1, alertEnd).trim();
+                                el.setAttribute('data-action-type', 'alert');
+                                el.setAttribute('data-alert-message', alertMessage);
+                            }
+                        }
                     }
+                    
+                    // Always remove the onclick handler for security
+                    el.removeAttribute(attr.name);
                 } else {
                     el.removeAttribute(attr.name);
                 }
@@ -91,6 +119,57 @@ function sanitizeHTML(html) {
     });
     
     return temp.innerHTML;
+}
+
+// Constants for context extraction
+const MAX_CONTEXT_LENGTH = 100; // Maximum characters for context ID
+const MIN_MEANINGFUL_TEXT_LENGTH = 10; // Minimum text length to be considered meaningful
+
+// Extract meaningful context from HTML content for use as contextId
+// NOTE: This function expects pre-sanitized HTML (already passed through sanitizeHTML)
+// and only reads text content - it does not execute any scripts
+function extractContextFromHTML(html) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    // Try to find a heading (h1, h2, h3, etc.)
+    for (let i = 1; i <= 6; i++) {
+        const heading = temp.querySelector(`h${i}`);
+        if (heading && heading.textContent.trim()) {
+            return heading.textContent.trim().slice(0, MAX_CONTEXT_LENGTH);
+        }
+    }
+    
+    // Try to find a title attribute or data-title
+    const elementWithTitle = temp.querySelector('[data-title], [title]');
+    if (elementWithTitle) {
+        const title = elementWithTitle.getAttribute('data-title') || elementWithTitle.getAttribute('title');
+        if (title && title.trim()) {
+            return title.trim().slice(0, MAX_CONTEXT_LENGTH);
+        }
+    }
+    
+    // Try to find the first paragraph with meaningful content
+    const paragraphs = temp.querySelectorAll('p');
+    for (const p of paragraphs) {
+        const text = p.textContent.trim();
+        if (text && text.length > MIN_MEANINGFUL_TEXT_LENGTH) {
+            return text.slice(0, MAX_CONTEXT_LENGTH);
+        }
+    }
+    
+    // Try to find any text content
+    const allText = temp.textContent.trim();
+    if (allText) {
+        // Take the first meaningful line
+        const firstLine = allText.split('\n')[0].trim();
+        if (firstLine) {
+            return firstLine.slice(0, MAX_CONTEXT_LENGTH);
+        }
+    }
+    
+    // Fallback to "Initial Experience" if we couldn't extract anything
+    return 'Initial Experience';
 }
 
 // Configuration
@@ -362,12 +441,10 @@ function displayExperience(experience) {
 
     const buttons = elements.generatedContent.querySelectorAll('button');
     buttons.forEach(button => {
-        if (!button.hasAttribute('onclick')) {
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                handleInteraction(button, experience.contextId);
-            });
-        }
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleInteraction(button, experience.contextId);
+        });
     });
 }
 
@@ -461,8 +538,8 @@ async function generateExperience() {
         // Sanitize the AI-generated HTML to prevent XSS attacks
         const sanitizedHTML = sanitizeHTML(generatedHTML);
 
-        // Create context ID for this initial experience
-        const contextId = 'Initial Experience';
+        // Extract a meaningful context ID from the generated content
+        const contextId = extractContextFromHTML(sanitizedHTML);
 
         // Add to history
         addToHistory({
