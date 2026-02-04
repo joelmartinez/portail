@@ -287,7 +287,7 @@ class OpenAIProvider extends AIProvider {
                         content: THEME_GENERATION_PROMPT
                     }
                 ],
-                temperature: 1.0, // Maximum creativity for theme selection
+                temperature: 1.0, // High creativity for diverse theme selection
                 max_tokens: 40 // Allow for longer theme names (1-3 words with tokenization overhead)
             })
         });
@@ -323,7 +323,7 @@ class OpenAIProvider extends AIProvider {
                         content: EXPERIENCE_TYPE_GENERATION_PROMPT
                     }
                 ],
-                temperature: 1.0, // Maximum creativity for type selection
+                temperature: 1.0, // High creativity for diverse type selection
                 max_tokens: 60 // Allow for longer experience type names (2-5 words with tokenization overhead)
             })
         });
