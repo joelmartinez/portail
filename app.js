@@ -53,14 +53,29 @@ function sanitizeHTML(html) {
                     // If it's a valid alert call, convert it to a data attribute for action handling
                     // This allows the button to trigger a new experience generation instead of just showing an alert
                     if (isValidAlertCall && !hasDangerousKeywords && usesSafeMathOnly) {
-                        // Extract the message from alert(...)
-                        // Find content between first ( after 'alert' and the matching closing )
+                        // Extract the message from alert(...) by finding the matching closing parenthesis
                         const alertStart = normalizedValue.indexOf('(');
-                        const alertEnd = normalizedValue.lastIndexOf(')');
-                        if (alertStart !== -1 && alertEnd !== -1 && alertEnd > alertStart) {
-                            const alertMessage = normalizedValue.substring(alertStart + 1, alertEnd).trim();
-                            el.setAttribute('data-action-type', 'alert');
-                            el.setAttribute('data-alert-message', alertMessage);
+                        if (alertStart !== -1) {
+                            // Track parenthesis depth to find the matching closing parenthesis
+                            let depth = 0;
+                            let alertEnd = -1;
+                            for (let i = alertStart; i < normalizedValue.length; i++) {
+                                if (normalizedValue[i] === '(') {
+                                    depth++;
+                                } else if (normalizedValue[i] === ')') {
+                                    depth--;
+                                    if (depth === 0) {
+                                        alertEnd = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (alertEnd !== -1) {
+                                const alertMessage = normalizedValue.substring(alertStart + 1, alertEnd).trim();
+                                el.setAttribute('data-action-type', 'alert');
+                                el.setAttribute('data-alert-message', alertMessage);
+                            }
                         }
                     }
                     
@@ -111,6 +126,8 @@ const MAX_CONTEXT_LENGTH = 100; // Maximum characters for context ID
 const MIN_MEANINGFUL_TEXT_LENGTH = 10; // Minimum text length to be considered meaningful
 
 // Extract meaningful context from HTML content for use as contextId
+// NOTE: This function expects pre-sanitized HTML (already passed through sanitizeHTML)
+// and only reads text content - it does not execute any scripts
 function extractContextFromHTML(html) {
     const temp = document.createElement('div');
     temp.innerHTML = html;
