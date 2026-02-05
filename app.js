@@ -680,13 +680,32 @@ function updateHistoryUI() {
  * @returns {Promise<Object>} Planning information including whether multi-step is needed
  */
 async function planExperience(theme, experienceType) {
-    // For now, we'll use simple heuristics to determine complexity
-    // Interactive experiences like games, forms, applications benefit from multi-step planning
+    // Expanded heuristics to recognize more experience types as complex
+    // This ensures a wider variety of experiences get multi-step planning for richer results
     const complexKeywords = [
+        // Games and interactive experiences
         'game', 'rpg', 'adventure', 'simulation', 'management', 'builder',
+        'puzzle', 'quiz', 'battle', 'strategy', 'inventory', 'tabletop',
+        'card', 'deck', 'board', 'escape', 'point-and-click', 'turn-based',
+        
+        // Applications and interfaces
         'form', 'application', 'system', 'interface', 'dashboard',
-        'puzzle', 'quiz', 'battle', 'strategy', 'inventory',
-        'terminal', 'command', 'interactive', 'choose', 'validation'
+        'terminal', 'command', 'database', 'archive', 'ticket',
+        'calendar', 'scheduling', 'analytics', 'inbox', 'messaging',
+        'social', 'feed', 'profile', 'marketplace', 'shop', 'store',
+        
+        // Content-rich experiences
+        'blog', 'news', 'article', 'broadcast', 'journal', 'museum',
+        'gallery', 'exhibition', 'portfolio', 'timeline', 'documentary',
+        'tutorial', 'lesson', 'guide', 'manual', 'documentation',
+        'recipe', 'cookbook', 'travel', 'brochure',
+        
+        // Interactive media
+        'interactive', 'choose', 'visual', 'novel', 'comic', 'graphic',
+        'exploration', 'map', 'location', 'browser',
+        
+        // Special formats
+        'validation', 'creation', 'character', 'retro', 'vintage', 'os'
     ];
     
     const typeWords = experienceType.toLowerCase().split(/\s+/);
@@ -748,6 +767,18 @@ FORMAT/TYPE: ${experienceType}
 
 Combine these two elements to create a unique, cohesive experience. The theme should influence the content, setting, and atmosphere, while the format determines the structure and interaction model.
 
+CRITICAL - MATCH THE FORMAT TO THE TYPE:
+- If this is a "blog" or "news" format, create 8-15 article links, not 3 choices
+- If this is a "dashboard" or "interface", create a grid of 6-12 interactive widgets
+- If this is a "game", design the appropriate game mechanics (board, cards, stats, etc.)
+- If this is a "museum" or "gallery", show 10-20 exhibits or artworks
+- If this is a "terminal" or "command", include command history and input
+- If this is an "email" or "messaging" app, show 8-12 messages
+- If this is a "map" or "exploration", create multiple locations to visit (8-15)
+- If this is a "form" or "application", include multiple fields (5-10)
+- If this is a "timeline", show multiple events spread across time
+- DON'T default to "3 button choices" unless that truly fits the format
+
 CRITICAL TECHNICAL REQUIREMENTS:
 - Your response MUST be ONLY valid HTML content
 - Do NOT include <html>, <head>, or <body> tags
@@ -786,6 +817,13 @@ For this first step:
 - Create the initial state or starting point
 - Add basic interactive elements that will be enhanced in later steps
 - Include data-metadata with initial state that will be built upon
+
+CRITICAL - MATCH THE FORMAT APPROPRIATELY:
+- If creating a "blog" or "news" site, set up the header and start with 5-10 article previews (will add more in later steps)
+- If creating a "dashboard", establish the grid layout with initial widgets (will expand in later steps)
+- If creating a "game", set up the game board/interface and initial state
+- If creating a "museum" or "gallery", show the entrance with preview of exhibits (will add more in later steps)
+- DON'T default to generic "3 choices" - match the actual format type
 
 IMPORTANT: This is just the foundation. Subsequent steps will add more complexity and interactivity.
 
